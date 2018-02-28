@@ -59,6 +59,9 @@ func NewWorker(name string, parellelCount int, endpoints []string,
 
 	worker = &Worker{name, parellelCount, cli, requestTimeout,
 		make(chan string, parellelCount), make(chan bool)}
+
+	// ready to run job parellel
+	worker.prepareForRun()
 	return worker, err
 }
 
@@ -97,36 +100,41 @@ func (worker *Worker) delete(key string, opts ...clientv3.OpOption) (*clientv3.D
 }
 
 func (worker *Worker) Close() {
+	worker.delete(worker.node())
 	worker.cli.Close()
 	close(worker.jobChan)
 	worker.closed <- true
 }
 
+func (worker *Worker) getAssignedDir() string {
+	return "assign/" + worker.name + "/"
+}
+
 func (worker *Worker) getAssignedJobKey(jobId string) string {
-	return "assign/" + worker.name + "/" + jobId
+	return worker.getAssignedDir() + jobId
 }
 
 func (worker *Worker) runJob(jobId string) {
-	fmt.Println("Run job", jobId)
+	log.Println("Run job", jobId)
 	// get the job command by job Id
 	jobIdNodeKey := "job/" + jobId
 	resp, err := worker.get(jobIdNodeKey)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	if len(resp.Kvs) == 0 {
-		fmt.Println("No job with id", jobId)
+		log.Println("No job with id", jobId)
 		return
 	}
 	var cmdWithArgs []string
 	err = json.Unmarshal(resp.Kvs[0].Value, &cmdWithArgs)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	if len(cmdWithArgs) == 0 {
-		fmt.Println("No command in the job", jobId)
+		log.Println("No command in the job", jobId)
 		return
 	}
 	command := cmdWithArgs[0]
@@ -138,11 +146,11 @@ func (worker *Worker) runJob(jobId string) {
 
 	// run job: execute command
 	cmd := exec.Command(command, args...)
-	fmt.Print("Run command: ", command)
+	log.Print("Run command: ", command)
 	for _, arg := range args {
-		fmt.Print(" ", arg)
+		log.Print(" ", arg)
 	}
-	fmt.Println()
+	log.Println()
 
 	//TODO: use cmd.Start() to async execute, and periodly update the stdout and stderr to node
 	// job/<jobid>/state/<worker>/stdout and stderr, so that user can known its running status.
@@ -229,7 +237,72 @@ func (worker *Worker) Register() error {
 			}
 		}
 	}()
+
 	return nil
+}
+
+// when starting/restarting worker, get the works that already existed and run
+func (worker *Worker) RunJobsAssigned() error {
+	// get the node assign/<worker>/*
+	assignNodeKey := worker.getAssignedDir()
+	lenAssignNodeKey := len(assignNodeKey)
+
+	resp, err := worker.get(assignNodeKey, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+	// get the jobs' id
+	jobs := make([]string, len(resp.Kvs))
+	for i, kv := range resp.Kvs {
+		// get the job id
+		assignJobKey := string(kv.Key)
+		jobId := assignJobKey[lenAssignNodeKey:]
+		jobs[i] = jobId
+	}
+	// run jobs
+	go func(jobIds []string) {
+		for _, jobId := range jobIds {
+			// send to job chan to run
+			worker.jobChan <- jobId
+		}
+	}(jobs)
+	return err
+}
+
+// ready to run job parellel
+func (worker *Worker) prepareForRun() {
+	for i := 0; i < worker.parellelCount; i++ {
+		go func() {
+			for jobId := range worker.jobChan {
+				worker.runJob(jobId)
+			}
+		}()
+	}
+}
+
+// listen to the work assigned
+func (worker *Worker) ListenNewJobAssigned() {
+	go func() {
+		assignNodeKey := worker.getAssignedDir()
+		lenAssignNodeKey := len(assignNodeKey)
+		log.Println("Worker", worker.Name(), "is ready for work on node", assignNodeKey)
+		rch := worker.watch(assignNodeKey, clientv3.WithPrefix())
+		for wresp := range rch {
+			for _, ev := range wresp.Events {
+				switch ev.Type.String() {
+				case "PUT":
+					// get the job id
+					assignJobKey := string(ev.Kv.Key)
+					jobId := assignJobKey[lenAssignNodeKey:]
+					worker.jobChan <- jobId
+				case "DELETE":
+					// do nothing
+				default:
+					log.Printf("Unknown event type %s (%q : %q)\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+				}
+			}
+		}
+	}()
 }
 
 // test:
@@ -262,7 +335,7 @@ func main() {
 		log.Fatal(err)
 	}
 	if existed {
-		log.Fatal("Worker", worker.Name(), "has already existed.")
+		log.Fatal("Worker ", worker.Name(), " has already existed.")
 	}
 
 	// register
@@ -270,36 +343,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// ready to run job parellel
-	for i := 0; i < worker.parellelCount; i++ {
-		go func() {
-			for jobId := range worker.jobChan {
-				worker.runJob(jobId)
-			}
-		}()
+	// listen to the work assigned
+	worker.ListenNewJobAssigned()
+
+	// when starting/restarting worker, get the works that already existed and run
+	if err = worker.RunJobsAssigned(); err != nil {
+		log.Println(err)
 	}
 
-	// listen to work assigned
-	go func() {
-		assignNodeKey := "assign/" + name + "/"
-		lenAssignNodeKey := len(assignNodeKey)
-		fmt.Println("Worker", name, "is ready for work on node", assignNodeKey)
-		rch := worker.watch(assignNodeKey, clientv3.WithPrefix())
-		for wresp := range rch {
-			for _, ev := range wresp.Events {
-				switch ev.Type.String() {
-				case "PUT":
-					// get the job id
-					assignJobKey := string(ev.Kv.Key)
-					jobId := assignJobKey[lenAssignNodeKey:]
-					worker.jobChan <- jobId
-				case "DELETE":
-					// do nothing
-				default:
-					fmt.Printf("Unknown event type %s (%q : %q)\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
-				}
-			}
-		}
-	}()
+	// wait for worker close
 	<-worker.closed
 }
