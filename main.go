@@ -38,10 +38,28 @@ type Job struct {
 }
 
 type Worker struct {
-	name          string
-	parellelCount int
-	jobs          map[int]*Job
-	cli           *clientv3.Client
+	name           string
+	parellelCount  int
+	cli            *clientv3.Client
+	requestTimeout time.Duration
+	jobChan        chan string
+	closed         chan bool
+}
+
+func NewWorker(name string, parellelCount int, endpoints []string,
+	dialTimeout time.Duration, requestTimeout time.Duration) (worker *Worker, err error) {
+
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		return
+	}
+
+	worker = &Worker{name, parellelCount, cli, requestTimeout,
+		make(chan string, parellelCount), make(chan bool)}
+	return worker, err
 }
 
 const (
@@ -78,6 +96,119 @@ func (worker *Worker) delete(key string, opts ...clientv3.OpOption) (*clientv3.D
 	return worker.cli.Delete(ctx, key, opts...)
 }
 
+func (worker *Worker) Close() {
+	worker.cli.Close()
+	close(worker.jobChan)
+	worker.closed <- true
+}
+
+func (worker *Worker) getAssignedJobKey(jobId string) string {
+	return "assign/" + worker.name + "/" + jobId
+}
+
+func (worker *Worker) runJob(jobId string) {
+	fmt.Println("Run job", jobId)
+	// get the job command by job Id
+	jobIdNodeKey := "job/" + jobId
+	resp, err := worker.get(jobIdNodeKey)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if len(resp.Kvs) == 0 {
+		fmt.Println("No job with id", jobId)
+		return
+	}
+	var cmdWithArgs []string
+	err = json.Unmarshal(resp.Kvs[0].Value, &cmdWithArgs)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if len(cmdWithArgs) == 0 {
+		fmt.Println("No command in the job", jobId)
+		return
+	}
+	command := cmdWithArgs[0]
+	args := cmdWithArgs[1:]
+
+	// set job state: running
+	jobStateFromWorker := jobIdNodeKey + "/state/" + worker.name
+	worker.put(jobStateFromWorker, JOB_STATUS_RUNNING)
+
+	// run job: execute command
+	cmd := exec.Command(command, args...)
+	fmt.Print("Run command: ", command)
+	for _, arg := range args {
+		fmt.Print(" ", arg)
+	}
+	fmt.Println()
+
+	//TODO: use cmd.Start() to async execute, and periodly update the stdout and stderr to node
+	// job/<jobid>/state/<worker>/stdout and stderr, so that user can known its running status.
+	byteBuf, err := cmd.CombinedOutput()
+	jobOutput := string(byteBuf)
+	log.Println(jobOutput)
+
+	// set job output
+	worker.put(jobStateFromWorker+"/stdouterr", jobOutput)
+
+	if err != nil {
+		// if error (exit value is not 0), set job state fail
+		log.Println(err)
+		worker.put(jobStateFromWorker, JOB_STATUS_FAIL)
+	} else {
+		// set job state done
+		worker.put(jobStateFromWorker, JOB_STATUS_DONE)
+	}
+	// remove the assign job assign to the worker, as it is not running or pending by the worker
+	worker.delete(worker.getAssignedJobKey(jobId))
+}
+
+func (worker *Worker) node() string {
+	return "worker/" + worker.name
+}
+
+func (worker *Worker) Exists() (bool, error) {
+	resp, err := worker.get(worker.node())
+	if err != nil {
+		return false, err
+	}
+	return len(resp.Kvs) > 0, nil
+}
+
+func (worker *Worker) Name() string {
+	return worker.name
+}
+
+func (worker *Worker) Register() error {
+	// register
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	grantResp, err := worker.cli.Grant(ctx, 5)
+	cancel()
+	if err != nil {
+		return err
+	}
+
+	workerNodeKey := worker.node()
+	worker.put(workerNodeKey, "", clientv3.WithLease(grantResp.ID))
+	log.Println("Worker", worker.name, "has registered to", workerNodeKey)
+
+	// beat heart
+	go func(id clientv3.LeaseID) {
+		for {
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			_, kaerr := worker.cli.KeepAliveOnce(ctx, id)
+			cancel()
+			if kaerr != nil {
+				log.Println(kaerr)
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}(grantResp.ID)
+	return nil
+}
+
 // test:
 // etcdctl put worker/wenzhe
 // etcdctl put job/py10 '["python", "-c", "import time; import sys; print 123; time.sleep(10); print 456; sys.exit(0)"]'
@@ -96,130 +227,56 @@ func main() {
 
 	fmt.Println("Hello GoCRMS worker", name)
 
-	// connect
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-	})
+	// connect and create worker
+	worker, err := NewWorker(name, parellelCount, endpoints, dialTimeout, requestTimeout)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer cli.Close()
-	worker := Worker{name, parellelCount, make(map[int]*Job), cli}
 
 	// check existance
-	workerNodeKey := "worker/" + name
-	resp, err := worker.get(workerNodeKey)
+	existed, err := worker.Exists()
 	if err != nil {
 		log.Fatal(err)
 	}
-	if len(resp.Kvs) > 0 {
-		kv := resp.Kvs[0]
-		log.Fatal("Worker", name, "has already existed. (", string(kv.Key), ":", string(kv.Value), ")")
+	if existed {
+		log.Fatal("Worker", worker.Name(), "has already existed.")
 	}
 
 	// register
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	grantResp, err := cli.Grant(ctx, 5)
-	cancel()
-	if err != nil {
+	if err = worker.Register(); err != nil {
 		log.Fatal(err)
 	}
 
-	worker.put(workerNodeKey, "Work", clientv3.WithLease(grantResp.ID))
-	fmt.Println("Worker", name, "has registered to", workerNodeKey)
-
-	// beat heart
-	go func(id clientv3.LeaseID) {
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-			_, kaerr := cli.KeepAliveOnce(ctx, id)
-			cancel()
-			if kaerr != nil {
-				log.Fatal(kaerr)
+	// ready to run job parellel
+	for i := 0; i < worker.parellelCount; i++ {
+		go func() {
+			for jobId := range worker.jobChan {
+				worker.runJob(jobId)
 			}
-			time.Sleep(2 * time.Second)
-		}
-	}(grantResp.ID)
+		}()
+	}
 
 	// listen to work assigned
-	assignNodeKey := "assign/" + name + "/"
-	lenAssignNodeKey := len(assignNodeKey)
-	fmt.Println("Worker", name, "is ready for work on node", assignNodeKey)
-	rch := worker.watch(assignNodeKey, clientv3.WithPrefix())
-	for wresp := range rch {
-		for _, ev := range wresp.Events {
-			switch ev.Type.String() {
-			case "PUT":
-				// get the job id
-				assignJobKey := string(ev.Kv.Key)
-				jobId := assignJobKey[lenAssignNodeKey:]
-				fmt.Println("Run job", jobId)
-				// get the job command by job Id
-				jobIdNodeKey := "job/" + jobId
-				resp, err := worker.get(jobIdNodeKey)
-				if err != nil {
-					fmt.Println(err)
-					continue
+	go func() {
+		assignNodeKey := "assign/" + name + "/"
+		lenAssignNodeKey := len(assignNodeKey)
+		fmt.Println("Worker", name, "is ready for work on node", assignNodeKey)
+		rch := worker.watch(assignNodeKey, clientv3.WithPrefix())
+		for wresp := range rch {
+			for _, ev := range wresp.Events {
+				switch ev.Type.String() {
+				case "PUT":
+					// get the job id
+					assignJobKey := string(ev.Kv.Key)
+					jobId := assignJobKey[lenAssignNodeKey:]
+					worker.jobChan <- jobId
+				case "DELETE":
+					// do nothing
+				default:
+					fmt.Printf("Unknown event type %s (%q : %q)\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
 				}
-				if len(resp.Kvs) == 0 {
-					fmt.Println("No job with id", jobId)
-					continue
-				}
-				var cmdWithArgs []string
-				err = json.Unmarshal(resp.Kvs[0].Value, &cmdWithArgs)
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-				if len(cmdWithArgs) == 0 {
-					fmt.Println("No command in the job", jobId)
-					continue
-				}
-				command := cmdWithArgs[0]
-				args := cmdWithArgs[1:]
-				// add to job
-				//					job := Job{jobId, command, args, JOB_STATUS_PENDING}
-				//					worker.jobs[jobId] = &job
-
-				// check resource to run job (parellel count)
-
-				// set job state: running
-				jobStateFromWorker := jobIdNodeKey + "/state/" + worker.name
-				worker.put(jobStateFromWorker, JOB_STATUS_RUNNING)
-
-				// run job: execute command
-				cmd := exec.Command(command, args...)
-				fmt.Print("Run command: ", command)
-				for _, arg := range args {
-					fmt.Print(" ", arg)
-				}
-				fmt.Println()
-
-				//TODO: use cmd.Start() to async execute, and periodly update the stdout and stderr to node
-				// job/<jobid>/state/<worker>/stdout and stderr, so that user can known its running status.
-				byteBuf, err := cmd.CombinedOutput()
-				jobOutput := string(byteBuf)
-				log.Println(jobOutput)
-
-				// set job output
-				worker.put(jobStateFromWorker+"/stdouterr", jobOutput)
-
-				if err != nil {
-					// if error (exit value is not 0), set job state fail
-					log.Println(err)
-					worker.put(jobStateFromWorker, JOB_STATUS_FAIL)
-				} else {
-					// set job state done
-					worker.put(jobStateFromWorker, JOB_STATUS_DONE)
-				}
-				// remove the assign job assign to the worker, as it is not running or pending by the worker
-				worker.delete(assignJobKey)
-			case "DELETE":
-				// do nothing
-			default:
-				fmt.Printf("Unknown event type %s (%q : %q)\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
 			}
 		}
-	}
+	}()
+	<-worker.closed
 }
