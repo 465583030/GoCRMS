@@ -206,6 +206,29 @@ func (worker *Worker) Register() error {
 			time.Sleep(2 * time.Second)
 		}
 	}(grantResp.ID)
+
+	// listen to the worker node itself: write "close" means close the worker,
+	// if receive DELETE event may be network timeout issue and may be reconnect? .
+	go func() {
+		rch := worker.watch(workerNodeKey, clientv3.WithPrefix())
+		for wresp := range rch {
+			for _, ev := range wresp.Events {
+				switch ev.Type.String() {
+				case "PUT":
+					// "close" means close the worker
+					if "close" == string(ev.Kv.Value) {
+						log.Println("Get close signal, worker", worker.name, "now is closing")
+						worker.Close()
+					}
+				case "DELETE":
+					log.Println("Worker", worker.name, "is deleted.")
+					//TODO: reconnect?
+				default:
+					log.Printf("Unknown event type %s (%q : %q)\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+				}
+			}
+		}
+	}()
 	return nil
 }
 
