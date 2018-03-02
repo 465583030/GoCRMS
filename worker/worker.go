@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,8 +17,8 @@ const (
 	JOB_STATUS_DONE    = "done"
 	JOB_STATUS_FAIL    = "fail"
 
-	WATCH_EVT_PUT    = "PUT"
-	WATCH_EVT_DELETE = "DELETE"
+	WATCH_EVT_PUT    = 0
+	WATCH_EVT_DELETE = 1
 
 	TIME_OUT_WORKER     = 5 // second
 	TIME_OUT_BEAT_HEART = 2 * time.Second
@@ -51,13 +52,14 @@ func NewWorker(name string, parellelCount int, endpoints []string,
 	return worker, err
 }
 
-func (worker *Worker) put(key, val string, opts ...clientv3.OpOption) {
+func (worker *Worker) put(key, val string, opts ...clientv3.OpOption) error {
 	ctx, cancel := context.WithTimeout(context.Background(), worker.requestTimeout)
+	defer cancel()
 	_, err := worker.cli.Put(ctx, key, val, opts...)
-	cancel()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
+	return err
 }
 
 func (worker *Worker) get(key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
@@ -173,7 +175,7 @@ func (worker *Worker) Register() error {
 	}
 
 	workerNodeKey := worker.node()
-	worker.put(workerNodeKey, "", clientv3.WithLease(grantResp.ID))
+	worker.put(workerNodeKey, strconv.Itoa(worker.parellelCount), clientv3.WithLease(grantResp.ID))
 	log.Println("Worker", worker.name, "has registered to", workerNodeKey)
 
 	// beat heart
@@ -195,7 +197,7 @@ func (worker *Worker) Register() error {
 		rch := worker.watch(workerNodeKey, clientv3.WithPrefix())
 		for wresp := range rch {
 			for _, ev := range wresp.Events {
-				switch ev.Type.String() {
+				switch ev.Type {
 				case WATCH_EVT_PUT:
 					// "close" means close the worker
 					if "close" == string(ev.Kv.Value) {
@@ -263,7 +265,7 @@ func (worker *Worker) ListenNewJobAssigned() {
 		rch := worker.watch(assignNodeKey, clientv3.WithPrefix())
 		for wresp := range rch {
 			for _, ev := range wresp.Events {
-				switch ev.Type.String() {
+				switch ev.Type {
 				case WATCH_EVT_PUT:
 					// get the job id
 					assignJobKey := string(ev.Kv.Key)
