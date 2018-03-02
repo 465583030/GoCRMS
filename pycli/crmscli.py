@@ -33,6 +33,9 @@ class CrmsCli(object):
     if self.__cancelWatchWorkers != None:
       self.__cancelWatchWorkers()
       self.__cancelWatchWorkers = None
+    if self.__cancelWatchJobs != None:
+      self.__cancelWatchJobs()
+      self.__cancelWatchJobs = None
 
   def getWorkers(self):
     if self.__cancelWatchWorkers == None: # not watch yet
@@ -52,7 +55,7 @@ class CrmsCli(object):
           self.__workers[evt.key] = evt.value
         elif isinstance(evt, DeleteEvent):
           self.__workers.pop(evt.key)
-    thread.start_new_thread(updateWorkers, (watchedWorkerEvents))
+    thread.start_new_thread(updateWorkers, (watchedWorkerEvents,))
 
   def stopWorker(self, name):
     self.cli.put('worker/' + name, 'close')
@@ -70,6 +73,23 @@ class CrmsCli(object):
       self.__jobs[jobId] = Job()
     return self.__jobs[jobId]
 
+  def __updateJob(self, k, v):
+    ks = k.split('/')
+    n = len(ks)
+    jobId = ks[1]
+    job = self.__getJobOrCreateIfAbsent(jobId)
+    if n == 2:
+      job.id = jobId
+      job.command = json.loads(v)
+    elif n == 4:
+      worker = ks[3]
+      state = job.getStateOrCreateIfAbsent(worker)
+      state.status = v
+    elif n == 5:
+      worker = ks[3]
+      state = job.getStateOrCreateIfAbsent(worker)
+      state.stdouterr = v
+
   def __getJobs(self):
     ''' example of key-value format in etcd server:
     job/3
@@ -84,27 +104,20 @@ class CrmsCli(object):
     '''
     jobs = self.cli.get_prefix('job/')
     for job in jobs:
-      k = job[1].key[JOB_PRIFIX:] # now k is 123/state/wenzhe/stdouterr for example (job/ has removed)
+      k = job[1].key
       v = job[0]
-      ks = k.split('/')
-      n = len(ks)
-      jobId = ks[0]
-      job = self.__getJobOrCreateIfAbsent(jobId)
-      if n == 1:
-        job.id = jobId
-        job.command = json.loads(v)
-      elif n == 3:
-        worker = ks[2]
-        state = job.getStateOrCreateIfAbsent(worker)
-        state.status = v
-      elif n == 4:
-        worker = ks[2]
-        state = job.getStateOrCreateIfAbsent(worker)
-        state.stdouterr = v
+      self.__updateJob(k, v)
     return self.__jobs
 
   def __watchJobs(self):
-    pass
+    events, self.__cancelWatchJobs = cli.watch_prefix('job/')
+    def updateJobs(evts):
+      for evt in evts:
+        if isinstance(evt, PutEvent):
+          self.__updateJob(evt.key, evt.value)
+        elif isinstance(evt, DeleteEvent):
+          pass # currently no job remove yet
+    thread.start_new_thread(updateJobs, events)
 
   def getJobs(self):
     if self.__cancelWatchJobs == None:
@@ -112,3 +125,10 @@ class CrmsCli(object):
       self.__watchJobs()
     return self.__jobs
 
+  def getJob(self, jobId):
+    jobs = self.getJobs()
+    return jobs[jobId]
+
+  def getJobState(self, jobId, workerName):
+    job = self.getJob(jobId)
+    return job.stateOfWorkers[workerName]
