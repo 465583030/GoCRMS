@@ -1,5 +1,6 @@
 import etcd3
 import json
+import thread
 from etcd3.events import PutEvent
 from etcd3.events import DeleteEvent
 
@@ -48,21 +49,21 @@ class CrmsCli(object):
     return {wk[1].key : wk[0] for wk in workers}
 
   def __watchWorkers(self):
-    watchedWorkerEvents, self.__cancelWatchWorkers = self.cli.watch_prefix('worker/')
-    def updateWorkers(events):
-      for evt in events:
+    evts, self.__cancelWatchWorkers = self.cli.watch_prefix('worker/')
+    def updateWorkers(evts):
+      for evt in evts:
         if isinstance(evt, PutEvent):
           self.__workers[evt.key] = evt.value
         elif isinstance(evt, DeleteEvent):
           self.__workers.pop(evt.key)
-    thread.start_new_thread(updateWorkers, (watchedWorkerEvents,))
+    thread.start_new_thread(updateWorkers, (evts,))
 
   def stopWorker(self, name):
     self.cli.put('worker/' + name, 'close')
 
   def createJob(self, jobId, jobCommand): # jobCommand is an array of each part of the command
     cmd = json.dumps(jobCommand) # e.g: ['ls', '-l', '..']
-    cli.put('job/' + jobId, cmd)
+    self.cli.put('job/' + jobId, cmd)
 
   def runJob(self, jobId, workerNameList):
     for worker in workerNameList:
@@ -110,14 +111,14 @@ class CrmsCli(object):
     return self.__jobs
 
   def __watchJobs(self):
-    events, self.__cancelWatchJobs = cli.watch_prefix('job/')
+    events, self.__cancelWatchJobs = self.cli.watch_prefix('job/')
     def updateJobs(evts):
       for evt in evts:
         if isinstance(evt, PutEvent):
           self.__updateJob(evt.key, evt.value)
         elif isinstance(evt, DeleteEvent):
           pass # currently no job remove yet
-    thread.start_new_thread(updateJobs, events)
+    thread.start_new_thread(updateJobs, (events,))
 
   def getJobs(self):
     if self.__cancelWatchJobs == None:
@@ -132,3 +133,26 @@ class CrmsCli(object):
   def getJobState(self, jobId, workerName):
     job = self.getJob(jobId)
     return job.stateOfWorkers[workerName]
+
+if __name__ == "__main__":
+  cli = CrmsCli()
+  #import pdb
+  #pdb.set_trace()
+  print cli.getWorkers()
+  import time
+  #time.sleep(20)
+  #print cli.getWorkers()
+  cli.createJob("1234", ['pwd'])
+  cli.runJob("1234", "wenzhe")
+  def printJobs(jobs):
+    for jobId, job in jobs.items():
+      print "job id:", job.id
+      print "job command", ' '.join(job.command)
+      for worker, state in job.stateOfWorkers.items():
+        print worker, state.status
+        print state.stdouterr
+
+  printJobs(cli.getJobs())
+  cli.runJob("1234", "qiqi")
+  printJobs(cli.getJobs())
+  cli.close()
