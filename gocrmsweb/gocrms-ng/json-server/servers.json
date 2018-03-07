@@ -1,0 +1,16 @@
+{
+  "servers": [
+    {
+      "host": "liuwenzhe",
+      "port": 7788,
+      "status": "UP",
+      "isReachable": true
+    },
+    { 
+      "host": "weliu",
+      "port": 8899,
+      "status": "DOWN",
+      "isReachable": false
+    }
+  ]
+}

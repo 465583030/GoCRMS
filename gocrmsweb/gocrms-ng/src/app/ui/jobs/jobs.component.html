@@ -1,0 +1,18 @@
+<h2>Jobs for {{server.host}}:{{server.port}}</h2>
+<table border="1">
+  <tr>
+    <th>ID</th>
+    <th>Command</th>
+    <th>Status</th>
+    <th>Start Time</th>
+    <th>Finish Time</th>
+  </tr>
+
+  <tr *ngFor="let jobDetail of jobs" [ngClass]="jobClass(jobDetail)">
+    <td>{{jobDetail.job.uuid.substring(0, 5)}}</td>
+    <td>{{jobDetail.job.command | join: ' '}}</td>
+    <td>{{jobDetail.status}}</td>
+    <td><!--{{jobDetail.startTime | datetime}}--></td>
+    <td><!--{{jobDetail.endTime | datetime}}--></td>
+  </tr>
+</table>

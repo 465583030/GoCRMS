@@ -1,0 +1,11 @@
+.done {
+  color: green
+}
+
+.fail {
+  color: red
+}
+
+.running {
+  color: blue
+}

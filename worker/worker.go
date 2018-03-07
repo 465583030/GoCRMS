@@ -31,6 +31,7 @@ type Worker struct {
 	requestTimeout time.Duration
 	jobChan        chan string
 	closed         chan bool
+	onClose        []func()
 }
 
 func NewWorker(name string, parellelCount int, endpoints []string,
@@ -45,7 +46,7 @@ func NewWorker(name string, parellelCount int, endpoints []string,
 	}
 
 	worker = &Worker{name, parellelCount, cli, requestTimeout,
-		make(chan string, parellelCount), make(chan bool)}
+		make(chan string, parellelCount), make(chan bool), make([]func(), 0)}
 
 	// ready to run job parellel
 	worker.prepareForRun()
@@ -68,8 +69,9 @@ func (worker *Worker) get(key string, opts ...clientv3.OpOption) (*clientv3.GetR
 	return worker.cli.Get(ctx, key, opts...)
 }
 
-func (worker *Worker) watch(key string, opts ...clientv3.OpOption) clientv3.WatchChan {
-	return worker.cli.Watch(context.Background(), key, opts...)
+func (worker *Worker) watch(key string, opts ...clientv3.OpOption) (clientv3.WatchChan, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	return worker.cli.Watch(ctx, key, opts...), cancel
 }
 
 func (worker *Worker) delete(key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
@@ -79,6 +81,9 @@ func (worker *Worker) delete(key string, opts ...clientv3.OpOption) (*clientv3.D
 }
 
 func (worker *Worker) Close() {
+	for _, fn := range worker.onClose {
+		fn()
+	}
 	worker.delete(worker.node())
 	worker.cli.Close()
 	close(worker.jobChan)
@@ -194,7 +199,8 @@ func (worker *Worker) Register() error {
 	// listen to the worker node itself: write "close" means close the worker,
 	// if receive DELETE event may be network timeout issue and may be reconnect? .
 	go func() {
-		rch := worker.watch(workerNodeKey, clientv3.WithPrefix())
+		rch, cancel := worker.watch(workerNodeKey, clientv3.WithPrefix())
+		worker.deferOnClose(cancel)
 		for wresp := range rch {
 			for _, ev := range wresp.Events {
 				switch ev.Type {
@@ -256,13 +262,19 @@ func (worker *Worker) prepareForRun() {
 	}
 }
 
+func (worker *Worker) deferOnClose(fn func()) {
+	worker.onClose = append(worker.onClose, fn) //TODO: may not thread safe
+}
+
 // listen to the work assigned
 func (worker *Worker) ListenNewJobAssigned() {
 	go func() {
 		assignNodeKey := worker.getAssignedDir()
 		lenAssignNodeKey := len(assignNodeKey)
 		log.Println("Worker", worker.Name(), "is ready for work on node", assignNodeKey)
-		rch := worker.watch(assignNodeKey, clientv3.WithPrefix())
+		rch, cancel := worker.watch(assignNodeKey, clientv3.WithPrefix())
+		worker.deferOnClose(cancel)
+
 		for wresp := range rch {
 			for _, ev := range wresp.Events {
 				switch ev.Type {

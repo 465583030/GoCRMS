@@ -1,0 +1,57 @@
+<p>
+  <input type="checkbox" [(ngModel)]="autoRefresh" (click)="onClickAutoRefresh($event)">
+  Auto Refresh
+  <ng-container *ngIf="autoRefresh; else REFRESH">
+    / <input type="text" size="1" [(ngModel)]="intervalSecondForRefresh" (ngModelChange)="onIntervalSecondForRefreshChanged($event)"> seconds
+  </ng-container>
+  <ng-template #REFRESH>
+    <button (click)="onRefresh()">Refresh</button>
+  </ng-template>
+</p>
+<table border="1">
+  <tr>
+    <th><input type="checkbox" [checked]="allSelected()" (click)="onSelectAllServers($event)"></th>
+    <th>Host</th>
+    <th>Port</th>
+    <th>Status</th>
+    <th>Reachable</th>
+    <th>Workers</th>
+    <th>Jobs</th>
+  </tr>
+
+  <tr *ngFor="let server of servers" [class.unreachable]="!server.isReachable">
+    <td><input *ngIf="server.isReachable" type="checkbox" 
+      [checked]="isServerSelected(server)" (click)="onSelectServer(server, $event)"></td>
+    <td>{{server.host}}</td>
+    <td>{{server.port}}</td>
+    <td>{{server.status}}</td>
+    <td>{{server.isReachable}}</td>
+    <td>
+      <a *ngIf="server.isReachable" href="javascript:void(0)" (click)="onClickWorkerCount(server)">
+        {{workerCount(server)}}
+      </a>
+    </td>
+    <td>
+      <a *ngIf="server.isReachable" href="javascript:void(0)" (click)="onClickJobCount(server)">
+        {{jobCount(server)}}
+      </a>
+    </td>
+  </tr>
+</table>
+<div>
+  <p>For the selected server:</p>
+  <div>
+    <button (click)="onRunJob()">Run Job</button>
+    <input type="text" size="50" [(ngModel)]="jobCommand" (keyup.enter)="onRunJob()">
+  </div>
+  <div>
+    <br>
+    <button (click)="onShutdown()">Shutdown</button>
+  </div>
+</div>
+<div *ngIf="selectedServerForWorkers">
+  <app-workers [server]="selectedServerForWorkers" [workers]="workersToShow()"></app-workers>
+</div>
+<div *ngIf="selectedServerForJobs">
+  <app-jobs [server]="selectedServerForJobs" [jobs]="jobsToShow()"></app-jobs>
+</div>

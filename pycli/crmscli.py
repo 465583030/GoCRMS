@@ -71,7 +71,9 @@ class CrmsCli(object):
 
   def __getJobOrCreateIfAbsent(self, jobId):
     if not self.__jobs.has_key(jobId):
-      self.__jobs[jobId] = Job()
+      job = Job()
+      job.id = jobId
+      self.__jobs[jobId] = job
     return self.__jobs[jobId]
 
   def __updateJob(self, k, v):
@@ -89,7 +91,9 @@ class CrmsCli(object):
     elif n == 5:
       worker = ks[3]
       state = job.getStateOrCreateIfAbsent(worker)
-      state.stdouterr = v
+      prop = ks[4]
+      if prop == "stdouterr":
+        state.stdouterr = v
 
   def __getJobs(self):
     ''' example of key-value format in etcd server:

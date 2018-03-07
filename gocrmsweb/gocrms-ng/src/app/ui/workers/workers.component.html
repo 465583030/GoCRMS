@@ -1,0 +1,12 @@
+<h2>Workers for {{server.host}}:{{server.port}}</h2>
+<table border="1">
+  <tr>
+    <th>Name</th>
+    <th>Status</th>
+  </tr>
+
+  <tr *ngFor="let worker of workers" [class.buzy]="worker.status === 'WORKING'">
+    <td>{{worker.name}}</td>
+    <td>{{worker.status}}</td>
+  </tr>
+</table>
