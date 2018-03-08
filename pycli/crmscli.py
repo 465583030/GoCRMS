@@ -138,6 +138,7 @@ class CrmsCli(object):
     job = self.getJob(jobId)
     return job.stateOfWorkers[workerName]
 
+# example of usage
 if __name__ == "__main__":
   cli = CrmsCli()
   #import pdb

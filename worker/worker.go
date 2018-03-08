@@ -126,6 +126,8 @@ func (worker *Worker) runJob(jobId string) {
 
 	// set job state: running
 	jobStateFromWorker := jobIdNodeKey + "/state/" + worker.name
+	stdouterr := jobStateFromWorker + "/stdouterr"
+	worker.delete(stdouterr)
 	worker.put(jobStateFromWorker, JOB_STATUS_RUNNING)
 
 	// run job: execute command
@@ -140,7 +142,7 @@ func (worker *Worker) runJob(jobId string) {
 	//log.Print("\n", jobOutput)
 
 	// set job output
-	worker.put(jobStateFromWorker+"/stdouterr", jobOutput)
+	worker.put(stdouterr, jobOutput)
 
 	if err != nil {
 		// if error (exit value is not 0), set job state fail
