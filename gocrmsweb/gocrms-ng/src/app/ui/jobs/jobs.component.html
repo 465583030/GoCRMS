@@ -6,6 +6,7 @@
     <th>Status</th>
     <th>Start Time</th>
     <th>Finish Time</th>
+    <th>Output</th>
   </tr>
 
   <tr *ngFor="let jobDetail of jobs" [ngClass]="jobClass(jobDetail)">
@@ -14,5 +15,6 @@
     <td>{{jobDetail.status}}</td>
     <td><!--{{jobDetail.startTime | datetime}}--></td>
     <td><!--{{jobDetail.endTime | datetime}}--></td>
+    <td>{{jobDetail.stdouterr}}
   </tr>
 </table>

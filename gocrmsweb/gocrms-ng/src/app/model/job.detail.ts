@@ -5,4 +5,5 @@ export interface JobDetail {
   status: string;
   // startTime: any;
   // endTime: any;
+  stdouterr: string;
 }

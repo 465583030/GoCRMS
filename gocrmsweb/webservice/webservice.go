@@ -32,6 +32,7 @@ type JobDetail struct {
 	Status string `json:"status"`
 	//StartTime string `json:"startTime"`
 	//EndTime string `json:"endTime"`
+	StdOutErr string `json:"stdouterr"`
 }
 
 type RunCommand struct {
@@ -119,7 +120,8 @@ func (ws *WebService) GetJobs() (jobs []JobDetail, err error) {
 				Uuid:    jobId,
 				Command: job.Command,
 			},
-			Status: job.GetStatus(),
+			Status:    job.GetStatus(),
+			StdOutErr: job.GetStdOutErr(),
 		}
 		jobs = append(jobs, jd)
 	}

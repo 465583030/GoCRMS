@@ -86,6 +86,14 @@ func (job *Job) GetStatus() string {
 	}
 }
 
+//TODO: here only get the any one of the worker's stdouterr, should merge or take other action
+func (job *Job) GetStdOutErr() string {
+	for _, state := range job.StateOfWorkers {
+		return state.Stdouterr
+	}
+	return ""
+}
+
 type Worker struct {
 	Name            string
 	ParellelAbility int
