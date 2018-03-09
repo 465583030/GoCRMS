@@ -128,16 +128,8 @@ func (ws *WebService) GetJobs() (jobs []JobDetail, err error) {
 		return
 	}
 	jobs = make([]JobDetail, 0, len(jobMap))
-	for jobId, job := range jobMap {
-		jd := JobDetail{
-			Job: Job{
-				Uuid:    jobId,
-				Command: job.Command,
-			},
-			Status:    job.GetStatus(),
-			StdOutErr: job.GetStdOutErr(),
-		}
-		jobs = append(jobs, jd)
+	for _, job := range jobMap {
+		jobs = append(jobs, toJobDetail(job))
 	}
 	return
 }
@@ -149,16 +141,20 @@ func (ws *WebService) GetJobsByWorker(workerName string) (jobs []JobDetail, err 
 	}
 	jobs = make([]JobDetail, 0, len(js))
 	for _, job := range js {
-		jd := JobDetail{
-			Job: Job{
-				Uuid:    job.ID,
-				Command: job.Command,
-			},
-			Status: job.GetStatus(),
-		}
-		jobs = append(jobs, jd)
+		jobs = append(jobs, toJobDetail(job))
 	}
 	return
+}
+
+func toJobDetail(job *gocrmscli.Job) JobDetail {
+	return JobDetail{
+		Job: Job{
+			Uuid:    job.ID,
+			Command: job.Command,
+		},
+		Status:    job.GetStatus(),
+		StdOutErr: job.GetStdOutErr(),
+	}
 }
 
 func (ws *WebService) RunJob(job RunCommand) error {

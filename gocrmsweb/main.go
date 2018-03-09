@@ -33,7 +33,7 @@ func main() {
 	if webPort == "" {
 		webPort = "8080"
 	}
-	endPoint := flag.Arg(0)
+	endPoint := flag.Arg(1)
 	if endPoint == "" {
 		endPoint = "localhost:2379"
 	}

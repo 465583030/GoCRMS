@@ -4,6 +4,6 @@ import { WorkersComponent } from './ui/workers/workers.component';
 import { JobsComponent } from './ui/jobs/jobs.component';
 
 export const AppRoutes: Routes = [
-  {path: '', redirectTo: 'servers', pathMatch: 'full'},
-  {path: 'servers', component: ServersComponent}
+  // {path: '', redirectTo: 'servers', pathMatch: 'full'},
+  {path: '', component: ServersComponent}
 ];

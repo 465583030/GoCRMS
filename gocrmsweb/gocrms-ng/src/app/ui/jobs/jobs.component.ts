@@ -25,4 +25,8 @@ export class JobsComponent implements OnInit {
       'running': jobDetail.status === 'RUNNING'
     };
   }
+
+  output(jobDetail: JobDetail): string {
+    return jobDetail.stdouterr; // .replace(/\n/g, '<br>'); //TODO: <br> also cannot work
+  }
 }
