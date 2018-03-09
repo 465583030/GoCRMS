@@ -46,8 +46,22 @@ func reply(w http.ResponseWriter, v interface{}) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	replyBytes(w, output)
+}
+
+func replyBytes(w http.ResponseWriter, output []byte) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(output)
+}
+
+func replyWithIndent(w http.ResponseWriter, v interface{}) {
+	output, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	replyBytes(w, output)
 }
 
 func parseBody(r *http.Request, v interface{}) error {
@@ -122,5 +136,5 @@ func getNodes(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	reply(w, nodes)
+	replyWithIndent(w, nodes)
 }
