@@ -2,14 +2,30 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"log"
 	"net/http"
 
-	"github.com/WenzheLiu/GoCRMS/gocrmsweb/webservice"
+	ws "github.com/WenzheLiu/GoCRMS/gocrmsweb/webservice"
 	"github.com/julienschmidt/httprouter"
 )
 
+var webservice *ws.WebService
+
 func main() {
+	// get argument
+	flag.Parse()
+	webPort := flag.Arg(0)
+	if webPort == "" {
+		webPort = "8080"
+	}
+	endPoint := flag.Arg(0)
+	if endPoint == "" {
+		endPoint = "localhost:2379"
+	}
+	endpoints := []string{endPoint}
+	webservice = ws.NewWebService(endpoints)
+
 	router := httprouter.New()
 	router.NotFound = http.FileServer(http.Dir("./dist"))
 
@@ -18,8 +34,9 @@ func main() {
 	router.GET("/api/jobs", getJobs)
 	router.POST("/api/run", runJob)
 	router.POST("/api/shutdown", shutdown)
+	router.GET("/api/nodes", getNodes)
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(":"+webPort, router))
 }
 
 func reply(w http.ResponseWriter, v interface{}) {
@@ -72,7 +89,7 @@ func getJobs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 }
 
 func runJob(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	var v webservice.RunCommand
+	var v ws.RunCommand
 	err := parseBody(r, &v)
 	if err != nil {
 		log.Println(err)
@@ -97,4 +114,13 @@ func shutdown(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	}
 	webservice.Shutdown(v)
 	w.WriteHeader(200)
+}
+
+func getNodes(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	nodes, err := webservice.GetNodes()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	reply(w, nodes)
 }

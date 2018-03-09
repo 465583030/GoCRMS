@@ -91,7 +91,7 @@ func (worker *Worker) Close() {
 }
 
 func (worker *Worker) getAssignedDir() string {
-	return "assign/" + worker.name + "/"
+	return "crms/assign/" + worker.name + "/"
 }
 
 func (worker *Worker) getAssignedJobKey(jobId string) string {
@@ -101,7 +101,7 @@ func (worker *Worker) getAssignedJobKey(jobId string) string {
 func (worker *Worker) runJob(jobId string) {
 	log.Println("Run job", jobId)
 	// get the job command by job Id
-	jobIdNodeKey := "job/" + jobId
+	jobIdNodeKey := "crms/job/" + jobId
 	resp, err := worker.get(jobIdNodeKey)
 	if err != nil {
 		log.Println(err)
@@ -157,7 +157,7 @@ func (worker *Worker) runJob(jobId string) {
 }
 
 func (worker *Worker) node() string {
-	return "worker/" + worker.name
+	return "crms/worker/" + worker.name
 }
 
 func (worker *Worker) Exists() (bool, error) {

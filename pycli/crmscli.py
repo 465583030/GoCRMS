@@ -4,7 +4,9 @@ import thread
 from etcd3.events import PutEvent
 from etcd3.events import DeleteEvent
 
-JOB_PRIFIX = len('job/')
+JOB_PRIFIX = 'crms/job/'
+WORKER_PREFIX = 'crms/worker/'
+ASSIGN_PREFIX = 'crms/assign/'
 
 class JobState(object):
   def __init__(self):
@@ -45,11 +47,11 @@ class CrmsCli(object):
     return self.__workers
 
   def __getWorkers(self):
-    workers = self.cli.get_prefix('worker/')
+    workers = self.cli.get_prefix(WORKER_PREFIX)
     return {wk[1].key : wk[0] for wk in workers}
 
   def __watchWorkers(self):
-    evts, self.__cancelWatchWorkers = self.cli.watch_prefix('worker/')
+    evts, self.__cancelWatchWorkers = self.cli.watch_prefix(WORKER_PREFIX)
     def updateWorkers(evts):
       for evt in evts:
         if isinstance(evt, PutEvent):
@@ -59,15 +61,15 @@ class CrmsCli(object):
     thread.start_new_thread(updateWorkers, (evts,))
 
   def stopWorker(self, name):
-    self.cli.put('worker/' + name, 'close')
+    self.cli.put(WORKER_PREFIX + name, 'close')
 
   def createJob(self, jobId, jobCommand): # jobCommand is an array of each part of the command
     cmd = json.dumps(jobCommand) # e.g: ['ls', '-l', '..']
-    self.cli.put('job/' + jobId, cmd)
+    self.cli.put(JOB_PRIFIX + jobId, cmd)
 
   def runJob(self, jobId, workerNameList):
     for worker in workerNameList:
-      self.cli.put('assign/' + worker + '/' + jobId, '')
+      self.cli.put(ASSIGN_PREFIX + worker + '/' + jobId, '')
 
   def __getJobOrCreateIfAbsent(self, jobId):
     if not self.__jobs.has_key(jobId):
@@ -107,7 +109,7 @@ class CrmsCli(object):
     drwxr-xr-x 1 weliu 1049089       0 Jan 17 16:53 bctools
     drwxr-xr-x 1 weliu 1049089       0 Jan  2 09:47 cluster
     '''
-    jobs = self.cli.get_prefix('job/')
+    jobs = self.cli.get_prefix(JOB_PRIFIX)
     for job in jobs:
       k = job[1].key
       v = job[0]
@@ -115,7 +117,7 @@ class CrmsCli(object):
     return self.__jobs
 
   def __watchJobs(self):
-    events, self.__cancelWatchJobs = self.cli.watch_prefix('job/')
+    events, self.__cancelWatchJobs = self.cli.watch_prefix(JOB_PRIFIX)
     def updateJobs(evts):
       for evt in evts:
         if isinstance(evt, PutEvent):

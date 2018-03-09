@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	workerPrefix = "worker/"
-	jobPrefix    = "job/"
-	assignPrefix = "assign/"
+	crmsPrefix   = "crms/"
+	workerPrefix = crmsPrefix + "worker/"
+	jobPrefix    = crmsPrefix + "job/"
+	assignPrefix = crmsPrefix + "assign/"
 
 	WATCH_EVT_PUT    = 0
 	WATCH_EVT_DELETE = 1
@@ -259,25 +260,26 @@ func (crms *CrmsCli) getJobOrCreateIfAbsent(jobId string) *Job {
 	return job
 }
 
+// k starts with "crms/job/<jobid>"
 func (crms *CrmsCli) updateJob(k string, v []byte) error {
-	ks := strings.Split(k, "/")
+	ks := strings.Split(k, "/")[2:]
 	n := len(ks)
-	jobId := ks[1]
+	jobId := ks[0]
 	job := crms.getJobOrCreateIfAbsent(jobId)
 	switch n {
-	case 2:
+	case 1:
 		job.ID = jobId
 		if err := json.Unmarshal(v, &job.Command); err != nil {
 			return err
 		}
-	case 4:
-		worker := ks[3]
+	case 3:
+		worker := ks[2]
 		state := job.GetStateOrCreateIfAbsent(worker)
 		state.Status = string(v)
-	case 5:
-		worker := ks[3]
+	case 4:
+		worker := ks[2]
 		state := job.GetStateOrCreateIfAbsent(worker)
-		prop := ks[4]
+		prop := ks[3]
 		if prop == "stdouterr" {
 			state.Stdouterr = string(v)
 		}
@@ -415,19 +417,20 @@ func (crms *CrmsCli) watchAssign() {
 	go func(workers map[string]*Worker) {
 		for wresp := range rch {
 			for _, ev := range wresp.Events {
-				k := string(ev.Kv.Key)
+				k := string(ev.Kv.Key) // k starts with crms/assign/<worker_name>
 				ks := strings.Split(k, "/")
 				if len(ks) < 3 { // invalid
 					log.Println("Invalid key", k)
 					continue
 				}
-				workerName := ks[1]
+				ks = ks[2:]
+				workerName := ks[0]
 				worker, exist := crms.workers[workerName] //TODO: may not thread safe
 				if !exist {
 					// nothing need to update
 					continue
 				}
-				jobId := ks[2]
+				jobId := ks[1]
 				if ev.Type == WATCH_EVT_DELETE {
 					delete(worker.Jobs, jobId)
 				} else if ev.Type == WATCH_EVT_PUT {
@@ -464,4 +467,18 @@ func (crms *CrmsCli) delete(key string, opts ...clientv3.OpOption) (*clientv3.De
 	ctx, cancel := context.WithTimeout(context.Background(), crms.requestTimeout)
 	defer cancel()
 	return crms.cli.Delete(ctx, key, opts...)
+}
+
+func (crms *CrmsCli) GetNodes() (nodes map[string]string, err error) {
+	resp, err := crms.get(crmsPrefix, clientv3.WithPrefix())
+	if err != nil {
+		return
+	}
+	nodes = make(map[string]string)
+	for _, kv := range resp.Kvs {
+		k := string(kv.Key)
+		v := string(kv.Value)
+		nodes[k] = v
+	}
+	return
 }

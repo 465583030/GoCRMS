@@ -34,6 +34,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	endpoint := flag.Arg(2)
+	if endpoint != "" {
+		endpoints = []string{endpoint}
+	}
 
 	fmt.Println("Hello GoCRMS worker", name)
 

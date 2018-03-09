@@ -40,29 +40,25 @@ type RunCommand struct {
 }
 
 type WebService struct {
+	crms *gocrmscli.CrmsCli
 }
-
-var crms *gocrmscli.CrmsCli
 
 const (
 	dialTimeout    = 5 * time.Second
 	requestTimeout = 10 * time.Second
 )
 
-var (
-	endpoints = []string{"localhost:2379"}
-)
-
-func init() {
+func NewWebService(endpoints []string) *WebService {
 	var err error
-	crms, err = gocrmscli.New(endpoints, dialTimeout, requestTimeout)
+	crms, err := gocrmscli.New(endpoints, dialTimeout, requestTimeout)
 	if err != nil {
 		log.Fatal(err)
 	}
+	return &WebService{crms}
 }
 
-func GetServers() (servers []Server, err error) {
-	workers, err := crms.GetWorkers()
+func (ws *WebService) GetServers() (servers []Server, err error) {
+	workers, err := ws.crms.GetWorkers()
 	if err != nil {
 		return
 	}
@@ -76,8 +72,8 @@ func GetServers() (servers []Server, err error) {
 }
 
 //TODO: rename: here worker is actually the parallel unit inside host, and host is actually worker
-func GetWorkers(host string) ([]Worker, error) {
-	worker, exist, err := crms.GetWorker(host)
+func (ws *WebService) GetWorkers(host string) ([]Worker, error) {
+	worker, exist, err := ws.crms.GetWorker(host)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +84,7 @@ func GetWorkers(host string) ([]Worker, error) {
 	i := 0
 	for jobId, _ := range worker.Jobs {
 		// get status
-		job, exist, err := crms.GetJob(jobId)
+		job, exist, err := ws.crms.GetJob(jobId)
 		var status string
 		if err != nil {
 			log.Println(err)
@@ -111,8 +107,8 @@ func GetWorkers(host string) ([]Worker, error) {
 	return wks, nil
 }
 
-func GetJobs() (jobs []JobDetail, err error) {
-	jobMap, err := crms.GetJobs()
+func (ws *WebService) GetJobs() (jobs []JobDetail, err error) {
+	jobMap, err := ws.crms.GetJobs()
 	if err != nil {
 		return
 	}
@@ -130,8 +126,8 @@ func GetJobs() (jobs []JobDetail, err error) {
 	return
 }
 
-func GetJobsByWorker(workerName string) (jobs []JobDetail, err error) {
-	js, err := crms.GetJobsByWorker(workerName)
+func (ws *WebService) GetJobsByWorker(workerName string) (jobs []JobDetail, err error) {
+	js, err := ws.crms.GetJobsByWorker(workerName)
 	if err != nil {
 		return
 	}
@@ -149,16 +145,16 @@ func GetJobsByWorker(workerName string) (jobs []JobDetail, err error) {
 	return
 }
 
-func RunJob(job RunCommand) error {
+func (ws *WebService) RunJob(job RunCommand) error {
 	jobId := strconv.Itoa(rand.Intn(10000))
-	err := crms.CreateJob(jobId, job.Command)
+	err := ws.crms.CreateJob(jobId, job.Command)
 	if err != nil {
 		return err
 	}
 	for _, hp := range job.HostPorts {
 		worker := strings.Split(hp, ":")[0]
 		log.Println("run job", jobId, "on worker", worker)
-		err = crms.RunJob(jobId, worker) //TODO: collect all error instead of replace older
+		err = ws.crms.RunJob(jobId, worker) //TODO: collect all error instead of replace older
 		if err != nil {
 			log.Println(err)
 		}
@@ -166,12 +162,16 @@ func RunJob(job RunCommand) error {
 	return err
 }
 
-func Shutdown(workers []string) {
+func (ws *WebService) Shutdown(workers []string) {
 	for _, worker := range workers {
 		worker = strings.Split(worker, ":")[0]
-		if err := crms.StopWorker(worker); err != nil {
+		if err := ws.crms.StopWorker(worker); err != nil {
 			log.Println("Cannot shutdown:", worker, ", reason is:", err.Error())
 		}
 		log.Println("shutdown:", worker)
 	}
+}
+
+func (ws *WebService) GetNodes() (map[string]string, error) {
+	return ws.crms.GetNodes()
 }
