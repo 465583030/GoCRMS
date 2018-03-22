@@ -3,38 +3,43 @@ import random
 import time
 import os.path
 
-def onJobStatusChanged(job):
-    jobState = job.getState()
-    print "job", job.id, "status change to", jobState.status
-    if jobState.status in ['done', 'fail']:
-        print "finish job", job.id, "with result", jobState.stdouterr
 
-def testRunJob(jobCount):
+def on_job_status_changed(job):
+    job_state = job.get_state()
+    print "job", job.id, "status change to", job_state.status
+    if job_state.status in ['done', 'fail']:
+        print "finish job", job.id, "with result", job_state.stdouterr
+
+
+def test_run_job(job_count):
     crms = crmscli.CrmsCli()
-    crms.onJobStatusChanged = onJobStatusChanged
+    crms.add_watcher(on_job_status_changed)
+
     crms.clean()
 
-    workers = crms.getWorkers().keys()
+    workers = crms.get_workers().keys()
     print workers
     if len(workers) == 0:
         return
-    for i in xrange(jobCount):
+    for i in xrange(job_count):
         f = os.path.join(os.path.dirname(__file__), 'mock_job.py')
-        jobId = "%d"%i
-        print 'create job', jobId
-        crms.createJob(jobId, ['python', '-c', 'print ' + jobId])
+        job_id = "%d"%i
+        print 'create job', job_id
+        crms.create_job(job_id, ['python', '-c', 'print ' + job_id])
         worker = random.choice(workers)
-        print 'run job', jobId, 'on worker', worker
-        crms.runJob(jobId, worker)
+        print 'run job', job_id, 'on worker', worker
+        crms.run_job(job_id, worker)
     # printNodes(crms.nodes())
     time.sleep(5)
-    printNodes(crms.nodes())
+    print_nodes(crms.nodes())
     crms.close()
 
-def printNodes(nodes):
+
+def print_nodes(nodes):
     print("nodes:")
     for (k, v) in sorted(nodes.items()):
         print k, ":", v
 
+
 if __name__ == "__main__":
-    testRunJob(2)
+    test_run_job(2)

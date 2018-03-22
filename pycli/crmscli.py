@@ -35,12 +35,12 @@ class Job(object):
         self.command = []  # jobCommand is an array of each part of the command
         self.stateOfWorkers = {}  # key: assigned worker name, value: JobState (state + stdout/err)
 
-    def getStateOrCreateIfAbsent(self, workerName):
-        if not self.stateOfWorkers.has_key(workerName):
-            self.stateOfWorkers[workerName] = JobState()
-        return self.stateOfWorkers[workerName]
+    def get_state_or_create_if_absent(self, worker_name):
+        if not self.stateOfWorkers.has_key(worker_name):
+            self.stateOfWorkers[worker_name] = JobState()
+        return self.stateOfWorkers[worker_name]
 
-    def getState(self):
+    def get_state(self):
         vs = self.stateOfWorkers.values()
         if len(vs) == 0:
             return None
@@ -57,13 +57,14 @@ class CrmsCli(object):
         self.__cancelWatchJobs = None
         self.__onJobStatusChanged = None
 
-        self.getWorkers()
-        self.getJobs()
+        self.get_workers()
+        self.get_jobs()
 
-    def addWatcher(self, onJobStatusChanged):
-        self.getWorkers()
-        self.getJobs()
-        self.onJobStatusChanged = onJobStatusChanged
+    def add_watcher(self, on_job_status_changed):
+        self.get_workers()
+        self.get_jobs()
+
+        self.__onJobStatusChanged = on_job_status_changed
 
     def close(self):
         if self.__cancelWatchWorkers is not None:
@@ -73,67 +74,67 @@ class CrmsCli(object):
             self.__cancelWatchJobs()
             self.__cancelWatchJobs = None
 
-    def getWorkers(self):
+    def get_workers(self):
         if self.__cancelWatchWorkers is None:  # not watch yet
-            self.__workers = self.__getWorkers()
-            self.__watchWorkers()
+            self.__workers = self.__get_workers()
+            self.__watch_workers()
         return self.__workers
 
-    def __getWorkers(self):
+    def __get_workers(self):
         workers = self.cli.get_prefix(WORKER_PREFIX)
         return {wk[1].key[len(WORKER_PREFIX):]: wk[0] for wk in workers}
 
-    def __watchWorkers(self):
+    def __watch_workers(self):
         evts, self.__cancelWatchWorkers = self.cli.watch_prefix(WORKER_PREFIX)
 
-        def updateWorkers(evts):
+        def update_workers(evts):
             for evt in evts:
                 if isinstance(evt, PutEvent):
                     self.__workers[evt.key[len(WORKER_PREFIX):]] = evt.value
                 elif isinstance(evt, DeleteEvent):
                     self.__workers.pop(evt.key[len(WORKER_PREFIX):])
 
-        thread.start_new_thread(updateWorkers, (evts,))
+        thread.start_new_thread(update_workers, (evts,))
 
-    def stopWorker(self, name):
+    def stop_worker(self, name):
         self.cli.put(WORKER_PREFIX + name, 'close')
 
-    def createJob(self, jobId, jobCommand):  # jobCommand is an array of each part of the command
-        cmd = json.dumps(jobCommand)  # e.g: ['ls', '-l', '..']
-        self.cli.put(JOB_PREFIX + jobId, cmd)
+    def create_job(self, job_id, job_command):  # jobCommand is an array of each part of the command
+        cmd = json.dumps(job_command)  # e.g: ['ls', '-l', '..']
+        self.cli.put(JOB_PREFIX + job_id, cmd)
 
-    def runJob(self, jobId, worker):
-        self.cli.put(ASSIGN_PREFIX + worker + '/' + jobId, '')
+    def run_job(self, job_id, worker):
+        self.cli.put(ASSIGN_PREFIX + worker + '/' + job_id, '')
 
-    def __getJobOrCreateIfAbsent(self, jobId):
-        if not self.__jobs.has_key(jobId):
+    def __get_job_or_create_if_absent(self, job_id):
+        if not self.__jobs.has_key(job_id):
             job = Job()
-            job.id = jobId
-            self.__jobs[jobId] = job
-        return self.__jobs[jobId]
+            job.id = job_id
+            self.__jobs[job_id] = job
+        return self.__jobs[job_id]
 
-    def __updateJob(self, k, v):
+    def __update_job(self, k, v):
         ks = k.split('/')[2:]
         n = len(ks)
-        jobId = ks[0]
-        job = self.__getJobOrCreateIfAbsent(jobId)
+        job_id = ks[0]
+        job = self.__get_job_or_create_if_absent(job_id)
         if n == 1:
-            job.id = jobId
+            job.id = job_id
             job.command = json.loads(v)
         elif n == 3:
             worker = ks[2]
-            state = job.getStateOrCreateIfAbsent(worker)
+            state = job.get_state_or_create_if_absent(worker)
             state.status = v
             if self.__onJobStatusChanged is not None:
                 self.__onJobStatusChanged(job)
         elif n == 4:
             worker = ks[2]
-            state = job.getStateOrCreateIfAbsent(worker)
+            state = job.get_state_or_create_if_absent(worker)
             prop = ks[3]
             if prop == "stdouterr":
                 state.stdouterr = v
 
-    def __getJobs(self):
+    def __get_jobs(self):
         ''' example of key-value format in etcd server:
         job/3
         ["ls", "-l", ".."]
@@ -149,34 +150,34 @@ class CrmsCli(object):
         for job in jobs:
             k = job[1].key
             v = job[0]
-            self.__updateJob(k, v)
+            self.__update_job(k, v)
         return self.__jobs
 
-    def __watchJobs(self):
+    def __watch_jobs(self):
         events, self.__cancelWatchJobs = self.cli.watch_prefix(JOB_PREFIX)
 
-        def updateJobs(evts):
+        def update_jobs(evts):
             for evt in evts:
                 if isinstance(evt, PutEvent):
-                    self.__updateJob(evt.key, evt.value)
+                    self.__update_job(evt.key, evt.value)
                 elif isinstance(evt, DeleteEvent):
                     pass  # currently no job remove yet
 
-        thread.start_new_thread(updateJobs, (events,))
+        thread.start_new_thread(update_jobs, (events,))
 
-    def getJobs(self):
+    def get_jobs(self):
         if self.__cancelWatchJobs is None:
-            self.__getJobs()
-            self.__watchJobs()
+            self.__get_jobs()
+            self.__watch_jobs()
         return self.__jobs
 
-    def getJob(self, jobId):
-        jobs = self.getJobs()
-        return jobs[jobId]
+    def get_job(self, job_id):
+        jobs = self.get_jobs()
+        return jobs[job_id]
 
-    def getJobState(self, jobId, workerName):
-        job = self.getJob(jobId)
-        return job.stateOfWorkers[workerName]
+    def get_job_state(self, job_id, worker_name):
+        job = self.get_job(job_id)
+        return job.stateOfWorkers[worker_name]
 
     def nodes(self):
         result = self.cli.get_prefix('crms/')
@@ -191,21 +192,22 @@ class CrmsCli(object):
         self.cli.delete_prefix('crms/assign/')
         self.cli.delete_prefix('crms/job/')
 
+
 # example of usage
 if __name__ == "__main__":
     cli = CrmsCli()
     # import pdb
     # pdb.set_trace()
-    print cli.getWorkers()
-    import time
+    print cli.get_workers()
+    # import time
 
     # time.sleep(20)
     # print cli.getWorkers()
-    cli.createJob("1234", ['pwd'])
-    cli.runJob("1234", "wenzhe")
+    cli.create_job("1234", ['pwd'])
+    cli.run_job("1234", "wenzhe")
 
 
-    def printJobs(jobs):
+    def print_jobs(jobs):
         for jobId, job in jobs.items():
             print "job id:", job.id
             print "job command", ' '.join(job.command)
@@ -213,7 +215,7 @@ if __name__ == "__main__":
                 print worker, state.status
                 print state.stdouterr
 
-    printJobs(cli.getJobs())
-    cli.runJob("1234", "qiqi")
-    printJobs(cli.getJobs())
+    print_jobs(cli.get_jobs())
+    cli.run_job("1234", "qiqi")
+    print_jobs(cli.get_jobs())
     cli.close()
