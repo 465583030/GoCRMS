@@ -3,7 +3,7 @@ Cluster Manager written in Go lang
 
 # start worker
 ```
-GoCRMS <Worker Name> <ParellelAbility>
+GoCRMS <Worker Name> <ParellelAbility> [<etcd_host:port>=localhost:2379]
 ```
 
 # Go CLI
@@ -65,4 +65,10 @@ demo
 'done'
 >>> job.stateOfWorkers['wenzhe'].stdouterr
 'java version "1.8.0_60"\r\nJava(TM) SE Runtime Environment (build 1.8.0_60-b27)\r\nJava HotSpot(TM) 64-Bit Server VM (build 25.60-b23, mixed mode)\r\nPicked up _JAVA_OPTIONS: -Djava.net.preferIPv4Stack=true\n'
+```
+
+# Web UI
+```
+./gocrmsweb [<webport>=8080] [<etcd_host:port>=localhost:2379]
+(make sure "dist/" folder built by angular is in the same folder with gocrmsweb)
 ```

@@ -16,3 +16,9 @@
 # python cli
 *.pyc
 *.pyo
+
+# idea
+.idea/
+venv/
+venv1/
+

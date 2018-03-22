@@ -163,7 +163,7 @@ func (crms *CrmsCli) Close() {
 }
 
 func (crms *CrmsCli) GetWorker(name string) (worker *Worker, exist bool, err error) {
-	workers, err := crms.getWorkers()
+	workers, err := crms.GetWorkers()
 	if err != nil {
 		return
 	}

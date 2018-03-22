@@ -147,13 +147,13 @@ func (worker *Worker) runJob(jobId string) {
 	// run job: execute command
 	cmd := exec.Command(command, args...)
 
-	log.Println("Run command:", command, strings.Join(args, " "))
+	log.Println("Run Job", jobId, " with command:", command, strings.Join(args, " "))
 
 	//TODO: use cmd.Start() to async execute, and periodly update the stdout and stderr to node
 	// job/<jobid>/state/<worker>/stdout and stderr, so that user can known its running status.
 	byteBuf, err := cmd.CombinedOutput()
 	jobOutput := string(byteBuf)
-	//log.Print("\n", jobOutput)
+	log.Println("Finish Job", jobId, "with result: ", jobOutput)
 
 	// set job output
 	worker.put(stdouterr, jobOutput)
