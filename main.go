@@ -16,12 +16,14 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"strconv"
 	"time"
 
 	"github.com/WenzheLiu/GoCRMS/worker"
+	"io"
+	"os"
+	"path"
 )
 
 const (
@@ -44,6 +46,9 @@ func main() {
 	// get argument
 	flag.Parse()
 	name := flag.Arg(0)
+
+	initLog(name)
+
 	parellelCount, err := strconv.Atoi(flag.Arg(1))
 	if err != nil {
 		log.Fatal(err)
@@ -52,8 +57,6 @@ func main() {
 	if endpoint != "" {
 		endpoints = []string{endpoint}
 	}
-
-	fmt.Println("Hello GoCRMS worker", name)
 
 	// connect and create worker
 	worker, err := worker.NewWorker(name, parellelCount, endpoints, dialTimeout, requestTimeout)
@@ -85,4 +88,26 @@ func main() {
 
 	// wait until worker close
 	worker.WaitUntilClose()
+}
+func initLog(workerName string) {
+	// set output
+	userHome := os.Getenv("HOME")
+	if userHome == "" {
+		log.Fatalln("Fail to get user home")
+	}
+	logDir := path.Join(userHome, ".gocrms")
+	err := os.MkdirAll(logDir, 0666)
+	if err != nil {
+		log.Fatalln("Fail to make directory for the log file", err)
+	}
+
+	logFile, err := os.OpenFile(path.Join(logDir, workerName + ".log"),
+		os.O_CREATE|os.O_WRONLY|os.O_APPEND,0666)
+	if err != nil {
+		log.Fatalln("Fail to open the log file", err)
+	}
+	log.SetOutput(io.MultiWriter(os.Stderr, logFile))
+
+	// set format
+	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Lshortfile)
 }

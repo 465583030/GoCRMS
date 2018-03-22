@@ -3,7 +3,6 @@ import random
 import time
 import os.path
 
-
 def on_job_status_changed(job):
     job_state = job.get_state()
     print "job", job.id, "status change to", job_state.status
@@ -23,7 +22,7 @@ def test_run_job(job_count):
         return
     for i in xrange(job_count):
         f = os.path.join(os.path.dirname(__file__), 'mock_job.py')
-        job_id = "%d"%i
+        job_id = str(i)
         print 'create job', job_id
         crms.create_job(job_id, ['python', '-c', 'print ' + job_id])
         worker = random.choice(workers)
@@ -41,5 +40,10 @@ def print_nodes(nodes):
         print k, ":", v
 
 
+def init_log():
+    pass
+
+
 if __name__ == "__main__":
+    init_log()
     test_run_job(2)
