@@ -73,6 +73,13 @@ class CrmsCli(object):
         if self.__cancelWatchJobs is not None:
             self.__cancelWatchJobs()
             self.__cancelWatchJobs = None
+        print "close"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def get_workers(self):
         if self.__cancelWatchWorkers is None:  # not watch yet

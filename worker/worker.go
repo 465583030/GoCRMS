@@ -113,7 +113,6 @@ func (worker *Worker) getAssignedJobKey(jobId string) string {
 }
 
 func (worker *Worker) runJob(jobId string) {
-	log.Println("Run job", jobId)
 	// get the job command by job Id
 	jobIdNodeKey := "crms/job/" + jobId
 	resp, err := worker.get(jobIdNodeKey)
@@ -147,7 +146,7 @@ func (worker *Worker) runJob(jobId string) {
 	// run job: execute command
 	cmd := exec.Command(command, args...)
 
-	log.Println("Run Job", jobId, " with command:", command, strings.Join(args, " "))
+	log.Println("Run Job", jobId, "with command:", command, strings.Join(args, " "))
 
 	//TODO: use cmd.Start() to async execute, and periodly update the stdout and stderr to node
 	// job/<jobid>/state/<worker>/stdout and stderr, so that user can known its running status.
@@ -160,7 +159,7 @@ func (worker *Worker) runJob(jobId string) {
 
 	if err != nil {
 		// if error (exit value is not 0), set job state fail
-		log.Println(err)
+		log.Println("Job", jobId, "fail:", err)
 		worker.put(jobStateFromWorker, JOB_STATUS_FAIL)
 	} else {
 		// set job state done
