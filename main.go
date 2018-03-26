@@ -89,6 +89,7 @@ func main() {
 	// wait until worker close
 	worker.WaitUntilClose()
 }
+
 func initLog(workerName string) {
 	// set output
 	userHome := os.Getenv("HOME")
@@ -96,7 +97,7 @@ func initLog(workerName string) {
 		log.Fatalln("Fail to get user home")
 	}
 	logDir := path.Join(userHome, ".gocrms")
-	err := os.MkdirAll(logDir, 0666)
+	err := os.MkdirAll(logDir, 0777)
 	if err != nil {
 		log.Fatalln("Fail to make directory for the log file", err)
 	}

@@ -185,7 +185,7 @@ func (worker *Worker) Name() string {
 	return worker.name
 }
 
-func (worker *Worker) Register() error {
+func (worker *Worker) register() error {
 	// register
 	ctx, cancel := context.WithTimeout(context.Background(), worker.requestTimeout)
 	grantResp, err := worker.cli.Grant(ctx, TIME_OUT_WORKER)
@@ -206,15 +206,23 @@ func (worker *Worker) Register() error {
 			cancel()
 			if kaerr != nil {
 				log.Println(kaerr)
+				return
 			}
 			time.Sleep(TIME_OUT_BEAT_HEART)
 		}
 	}(grantResp.ID)
+	return nil
+}
+
+func (worker *Worker) Register() error {
+	if err := worker.register(); err != nil {
+		return err
+	}
 
 	// listen to the worker node itself: write "close" means close the worker,
 	// if receive DELETE event may be network timeout issue and may be reconnect? .
 	go func() {
-		rch, cancel := worker.watch(workerNodeKey, clientv3.WithPrefix())
+		rch, cancel := worker.watch(worker.node(), clientv3.WithPrefix())
 		worker.deferOnClose(cancel)
 		for wresp := range rch {
 			for _, ev := range wresp.Events {
@@ -226,8 +234,12 @@ func (worker *Worker) Register() error {
 						worker.Close()
 					}
 				case WATCH_EVT_DELETE:
-					log.Println("Worker", worker.name, "is deleted.")
-					//TODO: reconnect?
+					log.Println("Worker", worker.name, "is deleted. Try re-register.")
+					// reconnect
+					if err := worker.register(); err != nil {
+						log.Println("Fail to re-register, cause:", err)
+						return
+					}
 				default:
 					log.Printf("Unknown event type %s (%q : %q)\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
 				}
