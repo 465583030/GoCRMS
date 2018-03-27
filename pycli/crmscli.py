@@ -49,8 +49,11 @@ class Job(object):
 
 
 class CrmsCli(object):
-    def __init__(self):
-        self.cli = etcd3.client()
+    def __init__(self, host_port='localhost:2379'):
+        hp = host_port.split(':')
+        host = hp[0]
+        port = int(hp[1])
+        self.cli = etcd3.client(host, port)
         self.__workers = {}  # key: worker name, value: worker parellel job count
         self.__cancelWatchWorkers = None
         self.__jobs = {}  # key: jobId, value: Job

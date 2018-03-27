@@ -97,13 +97,13 @@ func initLog(workerName string) {
 		log.Fatalln("Fail to get user home")
 	}
 	logDir := path.Join(userHome, ".gocrms")
-	err := os.MkdirAll(logDir, 0777)
+	err := os.MkdirAll(logDir, 0775)
 	if err != nil {
 		log.Fatalln("Fail to make directory for the log file", err)
 	}
 
 	logFile, err := os.OpenFile(path.Join(logDir, workerName + ".log"),
-		os.O_CREATE|os.O_WRONLY|os.O_APPEND,0666)
+		os.O_CREATE|os.O_WRONLY|os.O_APPEND,0664)
 	if err != nil {
 		log.Fatalln("Fail to open the log file", err)
 	}

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Usage: python performance_test.py <num_of_jobs>
+# Usage: python performance_test.py <num_of_jobs> [work_second] [<etcd_host:port>=localhost:2379]
 #
 
 import crmscli
@@ -238,7 +238,15 @@ def on_job_status_changed(job):
 
 
 def test_run_job(job_count):
-    with crmscli.CrmsCli() as crms:
+    if len(sys.argv) < 3:
+        work_time = 0
+    else:
+        work_time = sys.argv[2]
+    if len(sys.argv) < 4:
+        host_port = 'localhost:2379'
+    else:
+        host_port = sys.argv[3]
+    with crmscli.CrmsCli(host_port) as crms:
         crms.add_watcher(on_job_status_changed)
 
         crms.clean()
@@ -252,7 +260,7 @@ def test_run_job(job_count):
             f = os.path.join(os.path.dirname(__file__), 'mock_job.py')
             job_id = str(i)
             logger.info('create job %s', job_id)
-            crms.create_job(job_id, ['python', '-c', 'print ' + job_id])
+            crms.create_job(job_id, ['python', '-c', 'import time; time.sleep(%s); print %s' %(work_time, job_id)])
             worker = random.choice(workers)
             logger.info('run job %s on worker %s', job_id, worker)
             crms.run_job(job_id, worker)
