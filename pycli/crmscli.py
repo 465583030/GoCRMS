@@ -45,22 +45,10 @@ class Job(object):
     def __init__(self):
         self.id = ''
         self.command = []  # jobCommand is an array of each part of the command
-        self.stateOfWorkers = {}  # key: assigned worker name, value: JobState (state + stdout/err)
+        self.state = JobState()
 
-    @synchronized
-    def get_state_or_create_if_absent(self, worker_name):
-        if not self.stateOfWorkers.has_key(worker_name):
-            self.stateOfWorkers[worker_name] = JobState()
-        return self.stateOfWorkers[worker_name]
-
-    @synchronized
     def get_state(self):
-        vs = self.stateOfWorkers.values()
-        if len(vs) == 0:
-            return None
-        else:
-            return vs[0]
-
+        return self.state
 
 def start_worker(worker_host, name, parellel_count, etcd_host_port):
     ''' no wait for started '''
@@ -152,26 +140,24 @@ class CrmsCli(object):
         if n == 1:
             job.id = job_id
             job.command = json.loads(v)
+        elif n == 2:
+            prop = ks[1]
+            if prop == 'state':
+                job.state.status = v
+                if self.__onJobStatusChanged is not None:
+                    self.__onJobStatusChanged(job)
         elif n == 3:
-            worker = ks[2]
-            state = job.get_state_or_create_if_absent(worker)
-            state.status = v
-            if self.__onJobStatusChanged is not None:
-                self.__onJobStatusChanged(job)
-        elif n == 4:
-            worker = ks[2]
-            state = job.get_state_or_create_if_absent(worker)
-            prop = ks[3]
+            prop = ks[2]
             if prop == "stdouterr":
-                state.stdouterr = v
+                job.state.stdouterr = v
 
     def __get_jobs(self):
         ''' example of key-value format in etcd server:
         job/3
         ["ls", "-l", ".."]
-        job/3/state/wenzhe
+        job/3/state
         done
-        job/3/state/wenzhe/stdouterr
+        job/3/state/stdouterr
         total 1760
         drwxr-xr-x 1 weliu 1049089       0 Dec 13 17:18 angular
         drwxr-xr-x 1 weliu 1049089       0 Jan 17 16:53 bctools
@@ -208,11 +194,6 @@ class CrmsCli(object):
         jobs = self.get_jobs()
         return jobs[job_id]
 
-    @synchronized
-    def get_job_state(self, job_id, worker_name):
-        job = self.get_job(job_id)
-        return job.stateOfWorkers[worker_name]
-
     def nodes(self):
         result = self.cli.get_prefix('crms/')
         nodes = {}
@@ -245,9 +226,8 @@ if __name__ == "__main__":
         for jobId, job in jobs.items():
             print "job id:", job.id
             print "job command", ' '.join(job.command)
-            for worker, state in job.stateOfWorkers.items():
-                print worker, state.status
-                print state.stdouterr
+            print "job status", job.state.status
+            print job.state.stdouterr
 
     print_jobs(cli.get_jobs())
     cli.run_job("1234", "qiqi")

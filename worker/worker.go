@@ -138,7 +138,7 @@ func (worker *Worker) runJob(jobId string) {
 	args := cmdWithArgs[1:]
 
 	// set job state: running
-	jobStateFromWorker := jobIdNodeKey + "/state/" + worker.name
+	jobStateFromWorker := jobIdNodeKey + "/state"
 	stdouterr := jobStateFromWorker + "/stdouterr"
 	worker.delete(stdouterr)
 	worker.put(jobStateFromWorker, JOB_STATUS_RUNNING)
@@ -149,7 +149,7 @@ func (worker *Worker) runJob(jobId string) {
 	log.Println("Run Job", jobId, "with command:", command, strings.Join(args, " "))
 
 	//TODO: use cmd.Start() to async execute, and periodly update the stdout and stderr to node
-	// job/<jobid>/state/<worker>/stdout and stderr, so that user can known its running status.
+	// job/<jobid>/state/stdout and stderr, so that user can known its running status.
 	byteBuf, err := cmd.CombinedOutput()
 	jobOutput := string(byteBuf)
 	log.Println("Finish Job", jobId, "with result: ", jobOutput)
