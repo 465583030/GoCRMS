@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Usage: python performance_test.py <num_of_jobs> [work_second] [<etcd_host:port>=localhost:2379]
+# Usage: python performance_test.py <num_of_jobs> [work_second=0] [worker_count=1] [etcd_host:port=localhost:2379]
 #
 
 import crmscli
@@ -21,6 +21,8 @@ import os.path
 import logging
 import sys
 import threading
+import time
+import subprocess
 from datetime import datetime
 
 LOG_PATH = "~/.gocrms/performance.log"
@@ -36,12 +38,14 @@ def average(costs):
         cost += c
     return cost / len(costs)
 
+
 def find_job_id(s):
     i = s.find(' ')
     if i == -1:
         return s
     else:
         return s[:i]
+
 
 class CountDownLatch(object):
     def __init__(self, count=1):
@@ -71,10 +75,17 @@ class JobTime(object):
         self.worker = ""
 
     def start_cost(self):
+        self.__check_none()
         return self.start_on_worker - self.start_on_client
 
     def end_cost(self):
+        self.__check_none()
         return self.end_on_client - self.end_on_worker
+
+    def __check_none(self):
+        if None in [self.start_on_client, self.start_on_worker, self.end_on_worker, self.end_on_client]:
+            print 'JobTime contains None field:', self.__dict__
+
 
 class Summary(object):
     def __init__(self):
@@ -93,8 +104,8 @@ class Summary(object):
     def parse_worker_log(self, worker):
         '''
         the worker's log format is like this:
-        2018/03/23 11:42:44.374266 worker.go:150: Run Job 1 with command: python -c print 1
-        2018/03/23 11:42:45.005266 worker.go:156: Finish Job 0 with result:  0
+        fnode400 2018/03/23 11:42:44.374266 worker.go:150: Run Job 1 with command: python -c print 1
+        fnode401 2018/03/23 11:42:45.005266 worker.go:156: Finish Job 0 with result:  0
         '''
         RUN_JOB = 'Run Job '
         LEN_RUN = len(RUN_JOB)
@@ -104,16 +115,16 @@ class Summary(object):
         logfile = os.path.expanduser('~/.gocrms/%s.log' % worker)
         with open(logfile) as f:
             for line in f:
-                tags = line.split(' ', 3)
-                if len(tags) < 4:
+                tags = line.split(' ', 4)
+                if len(tags) < 5:
                     continue
                 try:
-                    dt = datetime.strptime(' '.join(tags[:2]), '%Y/%m/%d %H:%M:%S.%f')
+                    dt = datetime.strptime(' '.join(tags[1:3]), '%Y/%m/%d %H:%M:%S.%f')
                 except ValueError:
                     continue
                 if dt <= self.start_time:
                     continue
-                content = tags[3]
+                content = tags[4]
                 if content.startswith(RUN_JOB):
                     job_id = find_job_id(content[LEN_RUN:])
                     self.get_job(job_id).worker = worker
@@ -167,6 +178,22 @@ class Summary(object):
         costs = [jt.end_cost() for jt in self.jobs_time.values()]
         return average(costs)
 
+    def __average_workers_cost(self, fn):
+        worker_cost_map = {}
+        for jt in self.jobs_time.values():
+            if not worker_cost_map.has_key(jt.worker):
+                worker_cost_map[jt.worker] = []
+            worker_cost_map[jt.worker].append(fn(jt))
+        for worker in worker_cost_map.keys():
+            worker_cost_map[worker] = average(worker_cost_map[worker])
+        return worker_cost_map
+
+    def average_workers_start_cost(self):
+        return self.__average_workers_cost(lambda jt: jt.start_cost())
+
+    def average_workers_end_cost(self):
+        return self.__average_workers_cost(lambda jt: jt.end_cost())
+
     def first_start_on_client(self):
         return min([jt.start_on_client for jt in self.jobs_time.values()])
 
@@ -192,7 +219,7 @@ class Summary(object):
         return max([jt.end_on_client for jt in self.jobs_time.values()])
 
     def report(self):
-        fmt = '%-7s | %-7s | %-14s | %-14s | %-15s | %-15s | %-15s | %-15s'
+        fmt = '%-6s | %-8s | %-14s | %-14s | %-15s | %-15s | %-15s | %-15s'
         print fmt % (
             'job id', 'worker', 'start cost', 'end cost',
             'start on client', 'start on worker', 'end on worker', 'end on client'
@@ -203,6 +230,20 @@ class Summary(object):
                 jt.start_on_client.time(), jt.start_on_worker.time(),
                 jt.end_on_worker.time(), jt.end_on_client.time()
             )
+
+        print 'average start/end cost for each worker:'
+        fmt = '%-8s | %-14s | %-14s'
+        print fmt % (
+            'worker', 'avr start cost', 'avr end cost'
+        )
+        average_workers_start_cost = self.average_workers_start_cost()
+        average_workers_end_cost = self.average_workers_end_cost()
+        for worker, start_cost in average_workers_start_cost.items():
+            end_cost = average_workers_end_cost[worker]
+            print fmt % (
+                worker, start_cost, end_cost
+            )
+
         print 'average start cost:', self.average_start_cost()
         print 'average  end  cost:', self.average_end_cost()
 
@@ -242,22 +283,37 @@ def test_run_job(job_count):
         work_time = 0
     else:
         work_time = sys.argv[2]
+
     if len(sys.argv) < 4:
+        worker_count = 1
+    else:
+        worker_count = int(sys.argv[3])
+
+    if len(sys.argv) < 5:
         host_port = 'localhost:2379'
     else:
-        host_port = sys.argv[3]
+        host_port = sys.argv[4]
+
+    available_workers = get_available_workers(worker_count)
+    print 'available workers:', available_workers
+
+    start_workers(host_port, available_workers)
+
+    print 'connect etcd', host_port
     with crmscli.CrmsCli(host_port) as crms:
         crms.add_watcher(on_job_status_changed)
 
         crms.clean()
 
+        wait_for_workers_register(crms, available_workers)
+
         workers = crms.get_workers().keys()
         print "workers:", workers
         if len(workers) == 0:
-            return
+            sys.exit(0)
         summary.workers = workers
         for i in xrange(job_count):
-            f = os.path.join(os.path.dirname(__file__), 'mock_job.py')
+            # f = os.path.join(os.path.dirname(__file__), 'mock_job.py')
             job_id = str(i)
             logger.info('create job %s', job_id)
             crms.create_job(job_id, ['python', '-c', 'import time; time.sleep(%s); print %s' %(work_time, job_id)])
@@ -267,6 +323,45 @@ def test_run_job(job_count):
 
         jobs_finished_count.await()
         print_nodes(crms.nodes())
+
+        stop_workers(crms)
+
+
+def get_available_workers(worker_count):
+    '''
+    fnode091      up 375+20:58,     0 users,  load  0.02,  0.14,  0.45
+    fnode092      up 403+23:21,     0 users,  load  1.92,  2.14,  1.92
+    '''
+    p = subprocess.Popen("ruptime | grep 'fnode.*up'", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    cnt = 0
+    workers = []
+    for line in p.stdout.readlines():
+        workers.append(line.split(' ')[0])
+        cnt += 1
+        if cnt >= worker_count:
+            break
+    p.wait()
+    return workers
+
+
+def start_workers(etcd_host_port, workers):
+    # workers = ['fnode400', 'fnode401']
+    for worker in workers:
+        print 'start worker', worker
+        crmscli.start_worker(worker, worker, 100, etcd_host_port)
+
+
+def wait_for_workers_register(crms, workers):
+    try_count = 0
+    while try_count < 10 and len(crms.get_workers()) < len(workers):
+        try_count += 1
+        time.sleep(2)
+
+
+def stop_workers(crms):
+    for worker in crms.get_workers().keys():
+        crms.stop_worker(worker)
+    time.sleep(1)  # sleep 1s so that workers have time to flush log (when close log file)
 
 
 def print_nodes(nodes):
@@ -284,11 +379,19 @@ def init_log():
     logger.addHandler(file_handler)
     logger.addHandler(stream_handler)
     logger.setLevel(logging.INFO)
+    return file_handler
 
 
-if __name__ == "__main__":
-    init_log()
+def main():
+    print "start performance test for GoCRMS"
+    file_handler = init_log()
     test_run_job(jobcount)
+    file_handler.close() # close log file to flush
+
     print "Summary:"
     summary.parse_log()
     summary.report()
+
+
+if __name__ == "__main__":
+    main()

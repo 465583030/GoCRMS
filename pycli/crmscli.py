@@ -15,12 +15,24 @@
 import etcd3
 import json
 import thread
+import os
+import threading
 from etcd3.events import PutEvent
 from etcd3.events import DeleteEvent
 
 JOB_PREFIX = 'crms/job/'
 WORKER_PREFIX = 'crms/worker/'
 ASSIGN_PREFIX = 'crms/assign/'
+
+
+def synchronized(func):
+    func.__lock__ = threading.Lock()
+
+    def synced_func(*args, **kws):
+        with func.__lock__:
+            return func(*args, **kws)
+
+    return synced_func
 
 
 class JobState(object):
@@ -35,17 +47,24 @@ class Job(object):
         self.command = []  # jobCommand is an array of each part of the command
         self.stateOfWorkers = {}  # key: assigned worker name, value: JobState (state + stdout/err)
 
+    @synchronized
     def get_state_or_create_if_absent(self, worker_name):
         if not self.stateOfWorkers.has_key(worker_name):
             self.stateOfWorkers[worker_name] = JobState()
         return self.stateOfWorkers[worker_name]
 
+    @synchronized
     def get_state(self):
         vs = self.stateOfWorkers.values()
         if len(vs) == 0:
             return None
         else:
             return vs[0]
+
+
+def start_worker(worker_host, name, parellel_count, etcd_host_port):
+    ''' no wait for started '''
+    os.system('ssh %s GoCRMS %s %d %s &' %(worker_host, name, parellel_count, etcd_host_port))
 
 
 class CrmsCli(object):
@@ -84,6 +103,7 @@ class CrmsCli(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    @synchronized
     def get_workers(self):
         if self.__cancelWatchWorkers is None:  # not watch yet
             self.__workers = self.__get_workers()
@@ -123,6 +143,7 @@ class CrmsCli(object):
             self.__jobs[job_id] = job
         return self.__jobs[job_id]
 
+    @synchronized
     def __update_job(self, k, v):
         ks = k.split('/')[2:]
         n = len(ks)
@@ -175,16 +196,19 @@ class CrmsCli(object):
 
         thread.start_new_thread(update_jobs, (events,))
 
+    @synchronized
     def get_jobs(self):
         if self.__cancelWatchJobs is None:
             self.__get_jobs()
             self.__watch_jobs()
         return self.__jobs
 
+    @synchronized
     def get_job(self, job_id):
         jobs = self.get_jobs()
         return jobs[job_id]
 
+    @synchronized
     def get_job_state(self, job_id, worker_name):
         job = self.get_job(job_id)
         return job.stateOfWorkers[worker_name]

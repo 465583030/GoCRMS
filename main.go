@@ -47,7 +47,8 @@ func main() {
 	flag.Parse()
 	name := flag.Arg(0)
 
-	initLog(name)
+	logFile := initLog(name)
+	defer logFile.Close()
 
 	parellelCount, err := strconv.Atoi(flag.Arg(1))
 	if err != nil {
@@ -90,7 +91,7 @@ func main() {
 	worker.WaitUntilClose()
 }
 
-func initLog(workerName string) {
+func initLog(workerName string) *os.File {
 	// set output
 	userHome := os.Getenv("HOME")
 	if userHome == "" {
@@ -110,5 +111,8 @@ func initLog(workerName string) {
 	log.SetOutput(io.MultiWriter(os.Stderr, logFile))
 
 	// set format
+	log.SetPrefix(workerName + " ")
 	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Lshortfile)
+
+	return logFile
 }
