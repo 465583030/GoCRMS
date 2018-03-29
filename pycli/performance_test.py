@@ -72,6 +72,8 @@ class JobTime(object):
         self.start_on_worker = None
         self.end_on_worker = None
         self.end_on_client = None
+        self.create_job_on_client = None
+        self.job_become_running = None
         self.worker = ""
 
     def start_cost(self):
@@ -81,6 +83,11 @@ class JobTime(object):
     def end_cost(self):
         self.__check_none()
         return self.end_on_client - self.end_on_worker
+
+    def create_to_running(self):
+        if None in [self.create_job_on_client, self.job_become_running]:
+            print 'JobTime contains None field', self.__dict__
+        return self.job_become_running - self.create_job_on_client
 
     def __check_none(self):
         if None in [self.start_on_client, self.start_on_worker, self.end_on_worker, self.end_on_client]:
@@ -115,6 +122,7 @@ class Summary(object):
         logfile = os.path.expanduser('~/.gocrms/%s.log' % worker)
         with open(logfile) as f:
             for line in f:
+                line = line.rstrip()
                 tags = line.split(' ', 4)
                 if len(tags) < 5:
                     continue
@@ -140,14 +148,19 @@ class Summary(object):
         2018-03-23 10:13:37,927 run job 1 on worker w1
         2018-03-23 10:13:38,269 finish job 0 with result 0
         '''
+        CREATE_JOB = 'create job '
+        LEN_CREATE = len(CREATE_JOB)
         RUN_JOB = 'run job '
         LEN_RUN = len(RUN_JOB)
+        RUNNING_JOB = 'become running for job '
+        LEN_RUNNING = len(RUNNING_JOB)
         FINISH_JOB = 'finish job '
         LEN_FINISH = len(FINISH_JOB)
 
         logfile = os.path.expanduser(LOG_PATH)
         with open(logfile) as f:
             for line in f:
+                line = line.rstrip()
                 tags = line.split(' ', 2)
                 if len(tags) < 3:
                     continue
@@ -164,6 +177,12 @@ class Summary(object):
                 elif content.startswith(FINISH_JOB):
                     job_id = find_job_id(content[LEN_FINISH:])
                     self.get_job(job_id).end_on_client = dt
+                elif content.startswith(CREATE_JOB):
+                    job_id = find_job_id(content[LEN_CREATE:])
+                    self.get_job(job_id).create_job_on_client = dt
+                elif content.startswith(RUNNING_JOB):
+                    job_id = find_job_id(content[LEN_RUNNING:])
+                    self.get_job(job_id).job_become_running = dt
 
     def parse_log(self):
         self.parse_client_log()
@@ -219,16 +238,17 @@ class Summary(object):
         return max([jt.end_on_client for jt in self.jobs_time.values()])
 
     def report(self):
-        fmt = '%-6s | %-8s | %-14s | %-14s | %-15s | %-15s | %-15s | %-15s'
+        fmt = '%-6s | %-8s | %-17s | %-14s | %-14s | %-16s | %-15s | %-15s | %-15s | %-15s | %-15s'
         print fmt % (
-            'job id', 'worker', 'start cost', 'end cost',
-            'start on client', 'start on worker', 'end on worker', 'end on client'
+            'job id', 'worker', 'create to running', 'start cost', 'end cost',
+            'create on client', 'start on client', 'start on worker',
+            'become running', 'end on worker', 'end on client'
         )
         for job_id, jt in sorted(self.jobs_time.items()):
             print fmt % (
-                job_id, jt.worker, jt.start_cost(), jt.end_cost(),
-                jt.start_on_client.time(), jt.start_on_worker.time(),
-                jt.end_on_worker.time(), jt.end_on_client.time()
+                job_id, jt.worker, jt.create_to_running(), jt.start_cost(), jt.end_cost(),
+                jt.create_job_on_client.time(), jt.start_on_client.time(), jt.start_on_worker.time(),
+                jt.job_become_running.time(), jt.end_on_worker.time(), jt.end_on_client.time()
             )
 
         print 'average start/end cost for each worker:'
@@ -273,7 +293,9 @@ summary = Summary()
 def on_job_status_changed(job):
     job_state = job.get_state()
     # print "job", job.id, "status change to", job_state.status
-    if job_state.status in ['done', 'fail']:
+    if job_state.status == 'running':
+        logger.info('become running for job %s', job.id)
+    elif job_state.status in ['done', 'fail']:
         logger.info('finish job %s with result %s', job.id, job_state.stdouterr)
         jobs_finished_count.count_down()
 
@@ -313,7 +335,6 @@ def test_run_job(job_count):
             sys.exit(0)
         summary.workers = workers
         for i in xrange(job_count):
-            # f = os.path.join(os.path.dirname(__file__), 'mock_job.py')
             job_id = str(i)
             logger.info('create job %s', job_id)
             crms.create_job(job_id, ['python', '-c', 'import time; time.sleep(%s); print %s' %(work_time, job_id)])
