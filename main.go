@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/WenzheLiu/GoCRMS/worker"
-	"io"
+	// "io"
 	"os"
 	"path"
 )
@@ -108,7 +108,8 @@ func initLog(workerName string) *os.File {
 	if err != nil {
 		log.Fatalln("Fail to open the log file", err)
 	}
-	log.SetOutput(io.MultiWriter(os.Stderr, logFile))
+	// log.SetOutput(io.MultiWriter(os.Stderr, logFile))
+	log.SetOutput(logFile)
 
 	// set format
 	log.SetPrefix(workerName + " ")

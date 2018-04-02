@@ -174,6 +174,8 @@ class Summary(object):
                 if content.startswith(RUN_JOB):
                     job_id = find_job_id(content[LEN_RUN:])
                     self.get_job(job_id).start_on_client = dt
+                    worker = content.split(' ')[5]
+                    self.get_job(job_id).worker = worker
                 elif content.startswith(FINISH_JOB):
                     job_id = find_job_id(content[LEN_FINISH:])
                     self.get_job(job_id).end_on_client = dt
@@ -188,6 +190,10 @@ class Summary(object):
         self.parse_client_log()
         for worker in summary.workers:
             self.parse_worker_log(worker)
+
+    def average_create_to_running(self):
+        costs = [jt.create_to_running() for jt in self.jobs_time.values()]
+        return average(costs)
 
     def average_start_cost(self):
         costs = [jt.start_cost() for jt in self.jobs_time.values()]
@@ -206,6 +212,9 @@ class Summary(object):
         for worker in worker_cost_map.keys():
             worker_cost_map[worker] = average(worker_cost_map[worker])
         return worker_cost_map
+
+    def average_workers_create_to_running(self):
+        return self.__average_workers_cost(lambda jt: jt.create_to_running())
 
     def average_workers_start_cost(self):
         return self.__average_workers_cost(lambda jt: jt.start_cost())
@@ -237,40 +246,44 @@ class Summary(object):
     def last_end_on_client(self):
         return max([jt.end_on_client for jt in self.jobs_time.values()])
 
+    def first_create_on_client(self):
+        return min([jt.create_job_on_client for jt in self.jobs_time.values()])
+
+    def last_running(self):
+        return max([jt.job_become_running for jt in self.jobs_time.values()])
+
     def report(self):
-        fmt = '%-6s | %-8s | %-17s | %-14s | %-14s | %-16s | %-15s | %-15s | %-15s | %-15s | %-15s'
+        fmt = '%-6s | %-8s | %-17s | %-16s | %-15s | %-15s | %-15s'
         print fmt % (
-            'job id', 'worker', 'create to running', 'start cost', 'end cost',
-            'create on client', 'start on client', 'start on worker',
-            'become running', 'end on worker', 'end on client'
+            'job id', 'worker', 'create to running',
+            'create on client', 'start on client',
+            'become running', 'end on client'
         )
         for job_id, jt in sorted(self.jobs_time.items()):
             print fmt % (
-                job_id, jt.worker, jt.create_to_running(), jt.start_cost(), jt.end_cost(),
-                jt.create_job_on_client.time(), jt.start_on_client.time(), jt.start_on_worker.time(),
-                jt.job_become_running.time(), jt.end_on_worker.time(), jt.end_on_client.time()
+                job_id, jt.worker, jt.create_to_running(),
+                jt.create_job_on_client.time(), jt.start_on_client.time(),
+                jt.job_become_running.time(), jt.end_on_client.time()
             )
 
-        print 'average start/end cost for each worker:'
-        fmt = '%-8s | %-14s | %-14s'
+        print 'average create to running for each worker:'
+        fmt = '%-8s | %-17s'
         print fmt % (
-            'worker', 'avr start cost', 'avr end cost'
+            'worker', 'create to running'
         )
-        average_workers_start_cost = self.average_workers_start_cost()
-        average_workers_end_cost = self.average_workers_end_cost()
-        for worker, start_cost in average_workers_start_cost.items():
-            end_cost = average_workers_end_cost[worker]
+        average_workers_create_to_running = self.average_workers_create_to_running()
+        for worker, create_to_running in sorted(average_workers_create_to_running.items()):
             print fmt % (
-                worker, start_cost, end_cost
+                worker, create_to_running
             )
 
-        print 'average start cost:', self.average_start_cost()
-        print 'average  end  cost:', self.average_end_cost()
+        print 'total %d running on %d workers' %(jobcount, len(average_workers_create_to_running))
+        print 'average create to running:', self.average_create_to_running()
 
-        first_start_on_client = self.first_start_on_client()
+        # first_start_on_client = self.first_start_on_client()
         # first_start_on_worker = self.first_start_on_worker()
         # last_start_on_client = self.last_start_on_client()
-        last_start_on_worker = self.last_start_on_worker()
+        # last_start_on_worker = self.last_start_on_worker()
         # first_end_on_worker = self.first_end_on_worker()
         # first_end_on_client = self.first_end_on_client()
         # last_end_on_worker = self.last_end_on_worker()
@@ -280,8 +293,8 @@ class Summary(object):
         # print 'last start on client', last_start_on_client
         # print 'last start on worker', last_start_on_worker
 
-        print 'total start cost (last start on worker - first start on client)', \
-            last_start_on_worker - first_start_on_client
+        print 'total start cost (last running - first create on client)', \
+            self.last_running() - self.first_create_on_client()
 
 
 logger = logging.getLogger("crms")
@@ -330,20 +343,20 @@ def test_run_job(job_count):
         wait_for_workers_register(crms, available_workers)
 
         workers = crms.get_workers().keys()
-        print "workers:", workers
+        logger.info("workers: %s", workers)
         if len(workers) == 0:
             sys.exit(0)
         summary.workers = workers
         for i in xrange(job_count):
-            job_id = str(i)
+            job_id = '%05d' %i
             logger.info('create job %s', job_id)
-            crms.create_job(job_id, ['python', '-c', 'import time; time.sleep(%s); print %s' %(work_time, job_id)])
+            crms.create_job(job_id, ['python', '-c', 'import time; time.sleep(%s); print "%s"' %(work_time, job_id)])
             worker = random.choice(workers)
             logger.info('run job %s on worker %s', job_id, worker)
             crms.run_job(job_id, worker)
 
         jobs_finished_count.await()
-        print_nodes(crms.nodes())
+        # print_nodes(crms.nodes())
 
         stop_workers(crms)
 
@@ -365,11 +378,13 @@ def get_available_workers(worker_count):
     return workers
 
 
-def start_workers(etcd_host_port, workers):
+def start_worker(etcd_host_port, workers):
     # workers = ['fnode400', 'fnode401']
     for worker in workers:
-        print 'start worker', worker
-        crmscli.start_worker(worker, worker, 100, etcd_host_port)
+        for i in xrange(100):
+            name = worker + str(i)
+            logger.info('start worker %s', name)
+            crmscli.start_worker(name, 100, etcd_host_port)
 
 
 def wait_for_workers_register(crms, workers):
@@ -398,7 +413,7 @@ def init_log():
     file_handler.setFormatter(formatter)
     stream_handler = logging.StreamHandler(sys.stderr)
     logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
+    # logger.addHandler(stream_handler)
     logger.setLevel(logging.INFO)
     return file_handler
 
@@ -410,7 +425,7 @@ def main():
     file_handler.close() # close log file to flush
 
     print "Summary:"
-    summary.parse_log()
+    summary.parse_client_log()
     summary.report()
 
 

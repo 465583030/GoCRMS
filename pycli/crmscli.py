@@ -50,9 +50,15 @@ class Job(object):
     def get_state(self):
         return self.state
 
+
 def start_worker(worker_host, name, parellel_count, etcd_host_port):
     ''' no wait for started '''
     os.system('ssh %s GoCRMS %s %d %s &' %(worker_host, name, parellel_count, etcd_host_port))
+
+
+def start_worker_by_lsf(name, parellel_count, etcd_host_port):
+    ''' no wait for started '''
+    os.system('bsub -R "type==any" -q pwodebug "GoCRMS %s %d %s &"' % (name, parellel_count, etcd_host_port))
 
 
 class CrmsCli(object):
