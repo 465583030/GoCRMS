@@ -36,6 +36,8 @@ const (
 
 	TIME_OUT_WORKER     = 5 // second
 	TIME_OUT_BEAT_HEART = 2 * time.Second
+
+	WorkerClose = "close"
 )
 
 type Worker struct {
@@ -178,7 +180,15 @@ func (worker *Worker) Exists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return len(resp.Kvs) > 0, nil
+	if len(resp.Kvs) == 0 {
+		return false, nil
+	}
+	for _, kv := range resp.Kvs {
+		if string(kv.Value) == WorkerClose {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (worker *Worker) Name() string {
@@ -229,7 +239,7 @@ func (worker *Worker) Register() error {
 				switch ev.Type {
 				case WATCH_EVT_PUT:
 					// "close" means close the worker
-					if "close" == string(ev.Kv.Value) {
+					if WorkerClose == string(ev.Kv.Value) {
 						log.Println("Get close signal, worker", worker.name, "now is closing")
 						worker.Close()
 					}
@@ -237,7 +247,9 @@ func (worker *Worker) Register() error {
 					log.Println("Worker", worker.name, "is deleted. Try re-register.")
 					// reconnect
 					if err := worker.register(); err != nil {
+						// close worker if re try fail
 						log.Println("Fail to re-register, cause:", err)
+						worker.Close()
 						return
 					}
 				default:

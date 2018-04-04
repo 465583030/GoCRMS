@@ -1,5 +1,10 @@
+# usage: python close_crms.py <host:port>
+
+
 import subprocess
 import os
+import crmscli
+import sys
 
 
 def kill_crms(server):
@@ -43,6 +48,13 @@ def get_available_workers(worker_count):
     return workers
 
 
+def kill_crms_workers_by_etcd():
+    host_port = sys.argv[1]
+    with crmscli.CrmsCli(host_port) as crms:
+        crms.stop_workers()
+
+
 if __name__ == "__main__":
-    for server in get_available_workers(300):
-        kill_crms(server)
+    #for server in get_available_workers(300):
+    #    kill_crms(server)
+    kill_crms_workers_by_etcd()

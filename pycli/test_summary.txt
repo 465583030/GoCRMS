@@ -1,3 +1,46 @@
+total 500 running on 50 servers
+average create to running: 0:00:00.004034
+total start cost (last running - first create on client) 0:00:01.021000
+
+total 1000 running on 100 servers
+average create to running: 0:00:00.004847
+total start cost (last running - first create on client) 0:00:02.287000
+
+total 2000 running on 200 servers
+average create to running: 0:00:00.022244
+total start cost (last running - first create on client) 0:00:05.301000
+
+total 4000 running on 245/400 servers
+average create to running: 0:00:00.025385
+total start cost (last running - first create on client) 0:00:10.533000
+
+total 8000 running on 256/800 servers
+average create to running: 0:00:00.011806
+total start cost (last running - first create on client) 0:00:20.558000
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Summary (run 1000 jobs on 100 workers):
 job id | worker   | create to running | create on client | start on client | become running  | end on client
 00000  | fnode291 | 0:00:00.008000    | 00:26:34.958000  | 00:26:34.960000 | 00:26:34.966000 | 00:26:36.007000

@@ -26,7 +26,7 @@ import subprocess
 from datetime import datetime
 
 LOG_PATH = "~/.gocrms/performance.log"
-
+USE_LSF = True
 
 def average(costs):
     '''
@@ -63,6 +63,11 @@ class CountDownLatch(object):
         self.lock.acquire()
         while self.count > 0:
             self.lock.wait()
+        self.lock.release()
+
+    def get_count(self):
+        self.lock.acquire()
+        cnt = self.count
         self.lock.release()
 
 
@@ -311,6 +316,8 @@ def on_job_status_changed(job):
     elif job_state.status in ['done', 'fail']:
         logger.info('finish job %s with result %s', job.id, job_state.stdouterr)
         jobs_finished_count.count_down()
+        sys.stdout.write("left job count: %d\r" % jobs_finished_count.count)
+        sys.stdout.flush()
 
 
 def test_run_job(job_count):
@@ -329,10 +336,10 @@ def test_run_job(job_count):
     else:
         host_port = sys.argv[4]
 
-    available_workers = get_available_workers(worker_count)
-    print 'available workers:', available_workers
-
-    start_workers(host_port, available_workers)
+    if USE_LSF:
+        start_workers_by_lsf(host_port, worker_count)
+    else:
+        start_workers(host_port, worker_count)
 
     print 'connect etcd', host_port
     with crmscli.CrmsCli(host_port) as crms:
@@ -340,7 +347,7 @@ def test_run_job(job_count):
 
         crms.clean()
 
-        wait_for_workers_register(crms, available_workers)
+        wait_for_workers_register(crms, worker_count)
 
         workers = crms.get_workers().keys()
         logger.info("workers: %s", workers)
@@ -378,26 +385,35 @@ def get_available_workers(worker_count):
     return workers
 
 
-def start_workers(etcd_host_port, workers):
-    # workers = ['fnode400', 'fnode401']
-    for worker in workers:
-        for i in xrange(100):
-            name = worker + str(i)
-            logger.info('start worker %s', name)
-            crmscli.start_worker(name, 100, etcd_host_port)
+def start_workers(etcd_host_port, worker_count):
+    available_workers = get_available_workers(worker_count)
+    print 'available workers:', available_workers  # ['fnode400', 'fnode401']
+    available_count = len(available_workers)
+
+    for i in xrange(worker_count):
+        j = i % available_count
+        worker_host = available_workers[j]
+        name = 'w' + str(i)
+        logger.info('start worker %s in host %s', name, worker_host)
+        crmscli.start_worker(worker_host, name, 100, etcd_host_port)
 
 
 def start_workers_by_lsf(etcd_host_port, count):
     for i in xrange(count):
-        crmscli.start_worker_by_lsf(100, etcd_host_port)
+        name = 'w' + str(i)
+        logger.info('start worker %s in LSF', name)
+        crmscli.start_worker_by_lsf(name, 100, etcd_host_port)
 
 
-
-def wait_for_workers_register(crms, workers):
+def wait_for_workers_register(crms, workers_count):
     try_count = 0
-    while try_count < 10 and len(crms.get_workers()) < len(workers):
+    while try_count < 20 and len(crms.get_workers()) < workers_count:
+        sys.stdout.write("CRMS worker count: %d\r" % len(crms.get_workers()))
+        sys.stdout.flush()
         try_count += 1
         time.sleep(2)
+    print ''
+    print "CRMS worker count: %d" % len(crms.get_workers())
 
 
 def stop_workers(crms):
@@ -415,6 +431,10 @@ def print_nodes(nodes):
 def init_log():
     formatter = logging.Formatter('%(asctime)s %(message)s', )
     logfile = os.path.expanduser(LOG_PATH)
+    if not os.path.isfile(logfile):
+        os.makedirs(os.path.dirname(logfile))
+        with open(logfile, 'w') as f:
+            f.write("")
     file_handler = logging.FileHandler(logfile)
     file_handler.setFormatter(formatter)
     stream_handler = logging.StreamHandler(sys.stderr)

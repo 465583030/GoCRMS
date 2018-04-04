@@ -58,7 +58,10 @@ def start_worker(worker_host, name, parellel_count, etcd_host_port):
 
 def start_worker_by_lsf(name, parellel_count, etcd_host_port):
     ''' no wait for started '''
-    os.system('bsub -R "type==any" -q pwodebug "GoCRMS %s %d %s &"' % (name, parellel_count, etcd_host_port))
+    os.system(
+        # 'bsub -q pwodebug "GoCRMS %s %d %s &"'
+        'bsub -R "type==any" -q pwodebug "GoCRMS %s %d %s" &'
+        % (name, parellel_count, etcd_host_port))
 
 
 class CrmsCli(object):
@@ -122,6 +125,10 @@ class CrmsCli(object):
 
     def stop_worker(self, name):
         self.cli.put(WORKER_PREFIX + name, 'close')
+
+    def stop_workers(self):
+        for worker in self.get_workers().keys():
+            self.stop_worker(worker)
 
     def create_job(self, job_id, job_command):  # jobCommand is an array of each part of the command
         cmd = json.dumps(job_command)  # e.g: ['ls', '-l', '..']
@@ -210,6 +217,7 @@ class CrmsCli(object):
         return nodes
 
     def clean(self):
+        ''' clean assign and job, not clean worker '''
         self.cli.delete_prefix('crms/assign/')
         self.cli.delete_prefix('crms/job/')
 
