@@ -378,13 +378,19 @@ def get_available_workers(worker_count):
     return workers
 
 
-def start_worker(etcd_host_port, workers):
+def start_workers(etcd_host_port, workers):
     # workers = ['fnode400', 'fnode401']
     for worker in workers:
         for i in xrange(100):
             name = worker + str(i)
             logger.info('start worker %s', name)
             crmscli.start_worker(name, 100, etcd_host_port)
+
+
+def start_workers_by_lsf(etcd_host_port, count):
+    for i in xrange(count):
+        crmscli.start_worker_by_lsf(100, etcd_host_port)
+
 
 
 def wait_for_workers_register(crms, workers):
