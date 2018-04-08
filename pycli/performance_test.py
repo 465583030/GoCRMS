@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Usage: python performance_test.py <num_of_jobs> [work_second=0] [server_count=1] [etcd_host:port=localhost:2379]
+# Usage: python performance_test.py <num_of_jobs> [work_second=0] [server_count=1] [etcd_host:port=localhost:2379] [gocrms_count_per_lsf_server=1]
 #
 
 import crmscli
@@ -254,35 +254,38 @@ class Summary(object):
     def first_create_on_client(self):
         return min([jt.create_job_on_client for jt in self.jobs_time.values()])
 
+    def max_create_to_running(self):
+        return max([jt.create_to_running() for jt in self.jobs_time.values()])
+
     def last_running(self):
         return max([jt.job_become_running for jt in self.jobs_time.values()])
 
     def report(self):
-        fmt = '%-6s | %-8s | %-17s | %-16s | %-15s | %-15s | %-15s'
-        print fmt % (
-            'job id', 'server', 'create to running',
-            'create on client', 'start on client',
-            'become running', 'end on client'
-        )
-        for job_id, jt in sorted(self.jobs_time.items()):
-            print fmt % (
-                job_id, jt.server, jt.create_to_running(),
-                jt.create_job_on_client.time(), jt.start_on_client.time(),
-                jt.job_become_running.time(), jt.end_on_client.time()
-            )
-
-        print 'average create to running for each server:'
-        fmt = '%-8s | %-17s'
-        print fmt % (
-            'server', 'create to running'
-        )
+        # fmt = '%-6s | %-8s | %-17s | %-16s | %-15s | %-15s | %-15s'
+        # print fmt % (
+        #     'job id', 'server', 'create to running',
+        #     'create on client', 'start on client',
+        #     'become running', 'end on client'
+        # )
+        # for job_id, jt in sorted(self.jobs_time.items()):
+        #     print fmt % (
+        #         job_id, jt.server, jt.create_to_running(),
+        #         jt.create_job_on_client.time(), jt.start_on_client.time(),
+        #         jt.job_become_running.time(), jt.end_on_client.time()
+        #     )
+        #
+        # print 'average create to running for each server:'
+        # fmt = '%-8s | %-17s'
+        # print fmt % (
+        #     'server', 'create to running'
+        # )
         average_servers_create_to_running = self.average_servers_create_to_running()
-        for server, create_to_running in sorted(average_servers_create_to_running.items()):
-            print fmt % (
-                server, create_to_running
-            )
+        # for server, create_to_running in sorted(average_servers_create_to_running.items()):
+        #     print fmt % (
+        #         server, create_to_running
+        #     )
 
-        print 'total %d running on %d servers' %(jobcount, len(average_servers_create_to_running))
+        print 'total %d running on %d servers' % (jobcount, len(average_servers_create_to_running))
         print 'average create to running:', self.average_create_to_running()
 
         # first_start_on_client = self.first_start_on_client()
@@ -336,16 +339,20 @@ def test_run_job(job_count):
     else:
         host_port = sys.argv[4]
 
-    if USE_LSF:
-        start_servers_by_lsf(host_port, server_count)
-    else:
-        start_servers(host_port, server_count)
-
     print 'connect etcd', host_port
     with crmscli.CrmsCli(host_port) as crms:
         crms.add_watcher(on_job_status_changed)
 
         crms.clean()
+
+        if USE_LSF:
+            if len(sys.argv) < 6:
+                start_servers_by_lsf(host_port, server_count)
+            else:
+                gocrms_count_per_lsf_server = int(sys.argv[5])
+                start_multiple_servers_by_lsf(host_port, server_count, gocrms_count_per_lsf_server)
+        else:
+            start_servers(host_port, server_count)
 
         wait_for_servers_register(crms, server_count)
 
@@ -393,16 +400,28 @@ def start_servers(etcd_host_port, server_count):
     for i in xrange(server_count):
         j = i % available_count
         server_host = available_servers[j]
-        name = 'w' + str(i)
+        name = 'sv' + str(i)
         logger.info('start server %s in host %s', name, server_host)
         crmscli.start_server(server_host, name, 100, etcd_host_port)
 
 
 def start_servers_by_lsf(etcd_host_port, count):
     for i in xrange(count):
-        name = 'w' + str(i)
+        name = 'sv' + str(i)
         logger.info('start server %s in LSF', name)
         crmscli.start_server_by_lsf(name, 100, etcd_host_port)
+
+
+def start_multiple_servers_by_lsf(etcd_host_port, gocrms_server_count, gocrms_count_per_lsf_server):
+        # each LSF server starts 100 GoCRMS server
+    left_server_count = gocrms_server_count
+    i = 0
+    while left_server_count > 0:
+        name = 'sv' + str(i)
+        i += 1
+        server_count_to_start = min(left_server_count, gocrms_count_per_lsf_server)
+        crmscli.start_multiple_servers_by_lsf(server_count_to_start, name, 100, etcd_host_port)
+        left_server_count -= gocrms_count_per_lsf_server
 
 
 def wait_for_servers_register(crms, servers_count):
@@ -432,7 +451,9 @@ def init_log():
     formatter = logging.Formatter('%(asctime)s %(message)s', )
     logfile = os.path.expanduser(LOG_PATH)
     if not os.path.isfile(logfile):
-        os.makedirs(os.path.dirname(logfile))
+        dirname = os.path.dirname(logfile)
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
         with open(logfile, 'w') as f:
             f.write("")
     file_handler = logging.FileHandler(logfile)

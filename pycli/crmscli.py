@@ -64,6 +64,14 @@ def start_server_by_lsf(name, parellel_count, etcd_host_port):
         % (name, parellel_count, etcd_host_port))
 
 
+def start_multiple_servers_by_lsf(server_count, name_prefix, parellel_count, etcd_host_port):
+    ''' no wait for started '''
+    os.system(
+        # 'bsub -q pwodebug "GoCRMS %s %d %s &"'
+        'bsub -R "type==any" -q pwodebug "gocrmsstarter %d %s %d %s" &'
+        % (server_count, name_prefix, parellel_count, etcd_host_port))
+
+
 class CrmsCli(object):
     def __init__(self, host_port='localhost:2379'):
         hp = host_port.split(':')
