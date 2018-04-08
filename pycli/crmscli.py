@@ -21,7 +21,7 @@ from etcd3.events import PutEvent
 from etcd3.events import DeleteEvent
 
 JOB_PREFIX = 'crms/job/'
-WORKER_PREFIX = 'crms/worker/'
+SERVER_PREFIX = 'crms/server/'
 ASSIGN_PREFIX = 'crms/assign/'
 
 
@@ -51,12 +51,12 @@ class Job(object):
         return self.state
 
 
-def start_worker(worker_host, name, parellel_count, etcd_host_port):
+def start_server(server_host, name, parellel_count, etcd_host_port):
     ''' no wait for started '''
-    os.system('ssh %s GoCRMS %s %d %s &' %(worker_host, name, parellel_count, etcd_host_port))
+    os.system('ssh %s GoCRMS %s %d %s &' %(server_host, name, parellel_count, etcd_host_port))
 
 
-def start_worker_by_lsf(name, parellel_count, etcd_host_port):
+def start_server_by_lsf(name, parellel_count, etcd_host_port):
     ''' no wait for started '''
     os.system(
         # 'bsub -q pwodebug "GoCRMS %s %d %s &"'
@@ -70,25 +70,25 @@ class CrmsCli(object):
         host = hp[0]
         port = int(hp[1])
         self.cli = etcd3.client(host, port)
-        self.__workers = {}  # key: worker name, value: worker parellel job count
-        self.__cancelWatchWorkers = None
+        self.__servers = {}  # key: server name, value: server parellel job count
+        self.__cancel_watch_servers = None
         self.__jobs = {}  # key: jobId, value: Job
         self.__cancelWatchJobs = None
         self.__onJobStatusChanged = None
 
-        self.get_workers()
+        self.get_servers()
         self.get_jobs()
 
     def add_watcher(self, on_job_status_changed):
-        self.get_workers()
+        self.get_servers()
         self.get_jobs()
 
         self.__onJobStatusChanged = on_job_status_changed
 
     def close(self):
-        if self.__cancelWatchWorkers is not None:
-            self.__cancelWatchWorkers()
-            self.__cancelWatchWorkers = None
+        if self.__cancel_watch_servers is not None:
+            self.__cancel_watch_servers()
+            self.__cancel_watch_servers = None
         if self.__cancelWatchJobs is not None:
             self.__cancelWatchJobs()
             self.__cancelWatchJobs = None
@@ -101,41 +101,41 @@ class CrmsCli(object):
         self.close()
 
     @synchronized
-    def get_workers(self):
-        if self.__cancelWatchWorkers is None:  # not watch yet
-            self.__workers = self.__get_workers()
-            self.__watch_workers()
-        return self.__workers
+    def get_servers(self):
+        if self.__cancel_watch_servers is None:  # not watch yet
+            self.__servers = self.__get_servers()
+            self.__watch_servers()
+        return self.__servers
 
-    def __get_workers(self):
-        workers = self.cli.get_prefix(WORKER_PREFIX)
-        return {wk[1].key[len(WORKER_PREFIX):]: wk[0] for wk in workers}
+    def __get_servers(self):
+        servers = self.cli.get_prefix(SERVER_PREFIX)
+        return {wk[1].key[len(SERVER_PREFIX):]: wk[0] for wk in servers}
 
-    def __watch_workers(self):
-        evts, self.__cancelWatchWorkers = self.cli.watch_prefix(WORKER_PREFIX)
+    def __watch_servers(self):
+        evts, self.__cancel_watch_servers = self.cli.watch_prefix(SERVER_PREFIX)
 
-        def update_workers(evts):
+        def update_servers(evts):
             for evt in evts:
                 if isinstance(evt, PutEvent):
-                    self.__workers[evt.key[len(WORKER_PREFIX):]] = evt.value
+                    self.__servers[evt.key[len(SERVER_PREFIX):]] = evt.value
                 elif isinstance(evt, DeleteEvent):
-                    self.__workers.pop(evt.key[len(WORKER_PREFIX):])
+                    self.__servers.pop(evt.key[len(SERVER_PREFIX):])
 
-        thread.start_new_thread(update_workers, (evts,))
+        thread.start_new_thread(update_servers, (evts,))
 
-    def stop_worker(self, name):
-        self.cli.put(WORKER_PREFIX + name, 'close')
+    def stop_server(self, name):
+        self.cli.put(SERVER_PREFIX + name, 'close')
 
-    def stop_workers(self):
-        for worker in self.get_workers().keys():
-            self.stop_worker(worker)
+    def stop_servers(self):
+        for server in self.get_servers().keys():
+            self.stop_server(server)
 
     def create_job(self, job_id, job_command):  # jobCommand is an array of each part of the command
         cmd = json.dumps(job_command)  # e.g: ['ls', '-l', '..']
         self.cli.put(JOB_PREFIX + job_id, cmd)
 
-    def run_job(self, job_id, worker):
-        self.cli.put(ASSIGN_PREFIX + worker + '/' + job_id, '')
+    def run_job(self, job_id, server):
+        self.cli.put(ASSIGN_PREFIX + server + '/' + job_id, '')
 
     def __get_job_or_create_if_absent(self, job_id):
         if not self.__jobs.has_key(job_id):
@@ -217,7 +217,7 @@ class CrmsCli(object):
         return nodes
 
     def clean(self):
-        ''' clean assign and job, not clean worker '''
+        ''' clean assign and job, not clean server '''
         self.cli.delete_prefix('crms/assign/')
         self.cli.delete_prefix('crms/job/')
 
@@ -227,11 +227,11 @@ if __name__ == "__main__":
     cli = CrmsCli()
     # import pdb
     # pdb.set_trace()
-    print cli.get_workers()
+    print cli.get_servers()
     # import time
 
     # time.sleep(20)
-    # print cli.getWorkers()
+    # print cli.getservers()
     cli.create_job("1234", ['pwd'])
     cli.run_job("1234", "wenzhe")
 

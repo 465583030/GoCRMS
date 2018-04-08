@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Usage: python performance_test.py <num_of_jobs> [work_second=0] [worker_count=1] [etcd_host:port=localhost:2379]
+# Usage: python performance_test.py <num_of_jobs> [work_second=0] [server_count=1] [etcd_host:port=localhost:2379]
 #
 
 import crmscli
@@ -74,20 +74,20 @@ class CountDownLatch(object):
 class JobTime(object):
     def __init__(self):
         self.start_on_client = None
-        self.start_on_worker = None
-        self.end_on_worker = None
+        self.start_on_server = None
+        self.end_on_server = None
         self.end_on_client = None
         self.create_job_on_client = None
         self.job_become_running = None
-        self.worker = ""
+        self.server = ""
 
     def start_cost(self):
         self.__check_none()
-        return self.start_on_worker - self.start_on_client
+        return self.start_on_server - self.start_on_client
 
     def end_cost(self):
         self.__check_none()
-        return self.end_on_client - self.end_on_worker
+        return self.end_on_client - self.end_on_server
 
     def create_to_running(self):
         if None in [self.create_job_on_client, self.job_become_running]:
@@ -95,13 +95,13 @@ class JobTime(object):
         return self.job_become_running - self.create_job_on_client
 
     def __check_none(self):
-        if None in [self.start_on_client, self.start_on_worker, self.end_on_worker, self.end_on_client]:
+        if None in [self.start_on_client, self.start_on_server, self.end_on_server, self.end_on_client]:
             print 'JobTime contains None field:', self.__dict__
 
 
 class Summary(object):
     def __init__(self):
-        self.workers = []
+        self.servers = []
         self.start_time = datetime.now()
         self.jobs_time = {}
 
@@ -113,18 +113,18 @@ class Summary(object):
             self.jobs_time[job_id] = jt
             return jt
 
-    def parse_worker_log(self, worker):
+    def parse_server_log(self, server):
         '''
-        the worker's log format is like this:
-        fnode400 2018/03/23 11:42:44.374266 worker.go:150: Run Job 1 with command: python -c print 1
-        fnode401 2018/03/23 11:42:45.005266 worker.go:156: Finish Job 0 with result:  0
+        the server's log format is like this:
+        fnode400 2018/03/23 11:42:44.374266 server.go:150: Run Job 1 with command: python -c print 1
+        fnode401 2018/03/23 11:42:45.005266 server.go:156: Finish Job 0 with result:  0
         '''
         RUN_JOB = 'Run Job '
         LEN_RUN = len(RUN_JOB)
         FINISH_JOB = 'Finish Job '
         LEN_FINISH = len(FINISH_JOB)
 
-        logfile = os.path.expanduser('~/.gocrms/%s.log' % worker)
+        logfile = os.path.expanduser('~/.gocrms/%s.log' % server)
         with open(logfile) as f:
             for line in f:
                 line = line.rstrip()
@@ -140,17 +140,17 @@ class Summary(object):
                 content = tags[4]
                 if content.startswith(RUN_JOB):
                     job_id = find_job_id(content[LEN_RUN:])
-                    self.get_job(job_id).worker = worker
-                    self.get_job(job_id).start_on_worker = dt
+                    self.get_job(job_id).server = server
+                    self.get_job(job_id).start_on_server = dt
                 elif content.startswith(FINISH_JOB):
                     job_id = find_job_id(content[LEN_FINISH:])
-                    self.get_job(job_id).worker = worker
-                    self.get_job(job_id).end_on_worker = dt
+                    self.get_job(job_id).server = server
+                    self.get_job(job_id).end_on_server = dt
 
     def parse_client_log(self):
         '''
         log format:
-        2018-03-23 10:13:37,927 run job 1 on worker w1
+        2018-03-23 10:13:37,927 run job 1 on server w1
         2018-03-23 10:13:38,269 finish job 0 with result 0
         '''
         CREATE_JOB = 'create job '
@@ -179,8 +179,8 @@ class Summary(object):
                 if content.startswith(RUN_JOB):
                     job_id = find_job_id(content[LEN_RUN:])
                     self.get_job(job_id).start_on_client = dt
-                    worker = content.split(' ')[5]
-                    self.get_job(job_id).worker = worker
+                    server = content.split(' ')[5]
+                    self.get_job(job_id).server = server
                 elif content.startswith(FINISH_JOB):
                     job_id = find_job_id(content[LEN_FINISH:])
                     self.get_job(job_id).end_on_client = dt
@@ -193,8 +193,8 @@ class Summary(object):
 
     def parse_log(self):
         self.parse_client_log()
-        for worker in summary.workers:
-            self.parse_worker_log(worker)
+        for server in summary.servers:
+            self.parse_server_log(server)
 
     def average_create_to_running(self):
         costs = [jt.create_to_running() for jt in self.jobs_time.values()]
@@ -208,45 +208,45 @@ class Summary(object):
         costs = [jt.end_cost() for jt in self.jobs_time.values()]
         return average(costs)
 
-    def __average_workers_cost(self, fn):
-        worker_cost_map = {}
+    def __average_servers_cost(self, fn):
+        server_cost_map = {}
         for jt in self.jobs_time.values():
-            if not worker_cost_map.has_key(jt.worker):
-                worker_cost_map[jt.worker] = []
-            worker_cost_map[jt.worker].append(fn(jt))
-        for worker in worker_cost_map.keys():
-            worker_cost_map[worker] = average(worker_cost_map[worker])
-        return worker_cost_map
+            if not server_cost_map.has_key(jt.server):
+                server_cost_map[jt.server] = []
+            server_cost_map[jt.server].append(fn(jt))
+        for server in server_cost_map.keys():
+            server_cost_map[server] = average(server_cost_map[server])
+        return server_cost_map
 
-    def average_workers_create_to_running(self):
-        return self.__average_workers_cost(lambda jt: jt.create_to_running())
+    def average_servers_create_to_running(self):
+        return self.__average_servers_cost(lambda jt: jt.create_to_running())
 
-    def average_workers_start_cost(self):
-        return self.__average_workers_cost(lambda jt: jt.start_cost())
+    def average_servers_start_cost(self):
+        return self.__average_servers_cost(lambda jt: jt.start_cost())
 
-    def average_workers_end_cost(self):
-        return self.__average_workers_cost(lambda jt: jt.end_cost())
+    def average_servers_end_cost(self):
+        return self.__average_servers_cost(lambda jt: jt.end_cost())
 
     def first_start_on_client(self):
         return min([jt.start_on_client for jt in self.jobs_time.values()])
 
-    def first_start_on_worker(self):
-        return min([jt.start_on_worker for jt in self.jobs_time.values()])
+    def first_start_on_server(self):
+        return min([jt.start_on_server for jt in self.jobs_time.values()])
 
     def last_start_on_client(self):
         return max([jt.start_on_client for jt in self.jobs_time.values()])
 
-    def last_start_on_worker(self):
-        return max([jt.start_on_worker for jt in self.jobs_time.values()])
+    def last_start_on_server(self):
+        return max([jt.start_on_server for jt in self.jobs_time.values()])
 
-    def first_end_on_worker(self):
-        return min([jt.end_on_worker for jt in self.jobs_time.values()])
+    def first_end_on_server(self):
+        return min([jt.end_on_server for jt in self.jobs_time.values()])
 
     def first_end_on_client(self):
         return min([jt.end_on_client for jt in self.jobs_time.values()])
 
-    def last_end_on_worker(self):
-        return max([jt.end_on_worker for jt in self.jobs_time.values()])
+    def last_end_on_server(self):
+        return max([jt.end_on_server for jt in self.jobs_time.values()])
 
     def last_end_on_client(self):
         return max([jt.end_on_client for jt in self.jobs_time.values()])
@@ -260,43 +260,43 @@ class Summary(object):
     def report(self):
         fmt = '%-6s | %-8s | %-17s | %-16s | %-15s | %-15s | %-15s'
         print fmt % (
-            'job id', 'worker', 'create to running',
+            'job id', 'server', 'create to running',
             'create on client', 'start on client',
             'become running', 'end on client'
         )
         for job_id, jt in sorted(self.jobs_time.items()):
             print fmt % (
-                job_id, jt.worker, jt.create_to_running(),
+                job_id, jt.server, jt.create_to_running(),
                 jt.create_job_on_client.time(), jt.start_on_client.time(),
                 jt.job_become_running.time(), jt.end_on_client.time()
             )
 
-        print 'average create to running for each worker:'
+        print 'average create to running for each server:'
         fmt = '%-8s | %-17s'
         print fmt % (
-            'worker', 'create to running'
+            'server', 'create to running'
         )
-        average_workers_create_to_running = self.average_workers_create_to_running()
-        for worker, create_to_running in sorted(average_workers_create_to_running.items()):
+        average_servers_create_to_running = self.average_servers_create_to_running()
+        for server, create_to_running in sorted(average_servers_create_to_running.items()):
             print fmt % (
-                worker, create_to_running
+                server, create_to_running
             )
 
-        print 'total %d running on %d workers' %(jobcount, len(average_workers_create_to_running))
+        print 'total %d running on %d servers' %(jobcount, len(average_servers_create_to_running))
         print 'average create to running:', self.average_create_to_running()
 
         # first_start_on_client = self.first_start_on_client()
-        # first_start_on_worker = self.first_start_on_worker()
+        # first_start_on_server = self.first_start_on_server()
         # last_start_on_client = self.last_start_on_client()
-        # last_start_on_worker = self.last_start_on_worker()
-        # first_end_on_worker = self.first_end_on_worker()
+        # last_start_on_server = self.last_start_on_server()
+        # first_end_on_server = self.first_end_on_server()
         # first_end_on_client = self.first_end_on_client()
-        # last_end_on_worker = self.last_end_on_worker()
+        # last_end_on_server = self.last_end_on_server()
         # last_end_on_client = self.last_end_on_client()
         # print 'first start on client', first_start_on_client
-        # print 'first start on worker', first_start_on_worker
+        # print 'first start on server', first_start_on_server
         # print 'last start on client', last_start_on_client
-        # print 'last start on worker', last_start_on_worker
+        # print 'last start on server', last_start_on_server
 
         print 'total start cost (last running - first create on client)', \
             self.last_running() - self.first_create_on_client()
@@ -327,9 +327,9 @@ def test_run_job(job_count):
         work_time = sys.argv[2]
 
     if len(sys.argv) < 4:
-        worker_count = 1
+        server_count = 1
     else:
-        worker_count = int(sys.argv[3])
+        server_count = int(sys.argv[3])
 
     if len(sys.argv) < 5:
         host_port = 'localhost:2379'
@@ -337,9 +337,9 @@ def test_run_job(job_count):
         host_port = sys.argv[4]
 
     if USE_LSF:
-        start_workers_by_lsf(host_port, worker_count)
+        start_servers_by_lsf(host_port, server_count)
     else:
-        start_workers(host_port, worker_count)
+        start_servers(host_port, server_count)
 
     print 'connect etcd', host_port
     with crmscli.CrmsCli(host_port) as crms:
@@ -347,79 +347,79 @@ def test_run_job(job_count):
 
         crms.clean()
 
-        wait_for_workers_register(crms, worker_count)
+        wait_for_servers_register(crms, server_count)
 
-        workers = crms.get_workers().keys()
-        logger.info("workers: %s", workers)
-        if len(workers) == 0:
+        servers = crms.get_servers().keys()
+        logger.info("servers: %s", servers)
+        if len(servers) == 0:
             sys.exit(0)
-        summary.workers = workers
+        summary.servers = servers
         for i in xrange(job_count):
             job_id = '%05d' %i
             logger.info('create job %s', job_id)
             crms.create_job(job_id, ['python', '-c', 'import time; time.sleep(%s); print "%s"' %(work_time, job_id)])
-            worker = random.choice(workers)
-            logger.info('run job %s on worker %s', job_id, worker)
-            crms.run_job(job_id, worker)
+            server = random.choice(servers)
+            logger.info('run job %s on server %s', job_id, server)
+            crms.run_job(job_id, server)
 
         jobs_finished_count.await()
         # print_nodes(crms.nodes())
 
-        stop_workers(crms)
+        stop_servers(crms)
 
 
-def get_available_workers(worker_count):
+def get_available_servers(server_count):
     '''
     fnode091      up 375+20:58,     0 users,  load  0.02,  0.14,  0.45
     fnode092      up 403+23:21,     0 users,  load  1.92,  2.14,  1.92
     '''
     p = subprocess.Popen("ruptime | grep 'fnode.*up'", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     cnt = 0
-    workers = []
+    servers = []
     for line in p.stdout.readlines():
-        workers.append(line.split(' ')[0])
+        servers.append(line.split(' ')[0])
         cnt += 1
-        if cnt >= worker_count:
+        if cnt >= server_count:
             break
     p.wait()
-    return workers
+    return servers
 
 
-def start_workers(etcd_host_port, worker_count):
-    available_workers = get_available_workers(worker_count)
-    print 'available workers:', available_workers  # ['fnode400', 'fnode401']
-    available_count = len(available_workers)
+def start_servers(etcd_host_port, server_count):
+    available_servers = get_available_servers(server_count)
+    print 'available servers:', available_servers  # ['fnode400', 'fnode401']
+    available_count = len(available_servers)
 
-    for i in xrange(worker_count):
+    for i in xrange(server_count):
         j = i % available_count
-        worker_host = available_workers[j]
+        server_host = available_servers[j]
         name = 'w' + str(i)
-        logger.info('start worker %s in host %s', name, worker_host)
-        crmscli.start_worker(worker_host, name, 100, etcd_host_port)
+        logger.info('start server %s in host %s', name, server_host)
+        crmscli.start_server(server_host, name, 100, etcd_host_port)
 
 
-def start_workers_by_lsf(etcd_host_port, count):
+def start_servers_by_lsf(etcd_host_port, count):
     for i in xrange(count):
         name = 'w' + str(i)
-        logger.info('start worker %s in LSF', name)
-        crmscli.start_worker_by_lsf(name, 100, etcd_host_port)
+        logger.info('start server %s in LSF', name)
+        crmscli.start_server_by_lsf(name, 100, etcd_host_port)
 
 
-def wait_for_workers_register(crms, workers_count):
+def wait_for_servers_register(crms, servers_count):
     try_count = 0
-    while try_count < 20 and len(crms.get_workers()) < workers_count:
-        sys.stdout.write("CRMS worker count: %d\r" % len(crms.get_workers()))
+    while try_count < 20 and len(crms.get_servers()) < servers_count:
+        sys.stdout.write("CRMS server count: %d\r" % len(crms.get_servers()))
         sys.stdout.flush()
         try_count += 1
         time.sleep(2)
     print ''
-    print "CRMS worker count: %d" % len(crms.get_workers())
+    print "CRMS server count: %d" % len(crms.get_servers())
 
 
-def stop_workers(crms):
-    for worker in crms.get_workers().keys():
-        crms.stop_worker(worker)
-    time.sleep(1)  # sleep 1s so that workers have time to flush log (when close log file)
+def stop_servers(crms):
+    for server in crms.get_servers().keys():
+        crms.stop_server(server)
+    time.sleep(1)  # sleep 1s so that servers have time to flush log (when close log file)
 
 
 def print_nodes(nodes):

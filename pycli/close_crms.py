@@ -31,30 +31,30 @@ def kill_crms(server):
         os.system(cmd)
 
 
-def get_available_workers(worker_count):
+def get_available_servers(server_count):
     '''
     fnode091      up 375+20:58,     0 users,  load  0.02,  0.14,  0.45
     fnode092      up 403+23:21,     0 users,  load  1.92,  2.14,  1.92
     '''
     p = subprocess.Popen("ruptime | grep 'fnode.*up'", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     cnt = 0
-    workers = []
+    servers = []
     for line in p.stdout.readlines():
-        workers.append(line.split(' ')[0])
+        servers.append(line.split(' ')[0])
         cnt += 1
-        if cnt >= worker_count:
+        if cnt >= server_count:
             break
     p.wait()
-    return workers
+    return servers
 
 
-def kill_crms_workers_by_etcd():
+def kill_crms_servers_by_etcd():
     host_port = sys.argv[1]
     with crmscli.CrmsCli(host_port) as crms:
-        crms.stop_workers()
+        crms.stop_servers()
 
 
 if __name__ == "__main__":
-    #for server in get_available_workers(300):
+    #for server in get_available_servers(300):
     #    kill_crms(server)
-    kill_crms_workers_by_etcd()
+    kill_crms_servers_by_etcd()

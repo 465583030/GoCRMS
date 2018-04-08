@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/WenzheLiu/GoCRMS/worker"
+	"github.com/WenzheLiu/GoCRMS/server"
 	// "io"
 	"os"
 	"path"
@@ -36,7 +36,7 @@ var (
 )
 
 // test:
-// etcdctl put worker/wenzhe
+// etcdctl put server/wenzhe
 // etcdctl put job/py10 '["python", "-c", "import time; import sys; print 123; time.sleep(10); print 456; sys.exit(0)"]'
 // etcdctl put job/1 '["gotest"]'
 // etcdctl put assign/wenzhe/py10 ''
@@ -59,39 +59,39 @@ func main() {
 		endpoints = []string{endpoint}
 	}
 
-	// connect and create worker
-	worker, err := worker.NewWorker(name, parellelCount, endpoints, dialTimeout, requestTimeout)
+	// connect and create server
+	server, err := server.NewServer(name, parellelCount, endpoints, dialTimeout, requestTimeout)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// check existance
-	existed, err := worker.Exists()
+	existed, err := server.Exists()
 	if err != nil {
 		log.Fatal(err)
 	}
 	if existed {
-		log.Fatal("Worker ", worker.Name(), " has already existed.")
+		log.Fatal("Server ", server.Name(), " has already existed.")
 	}
 
 	// register
-	if err = worker.Register(); err != nil {
+	if err = server.Register(); err != nil {
 		log.Fatal(err)
 	}
 
 	// listen to the work assigned
-	worker.ListenNewJobAssigned()
+	server.ListenNewJobAssigned()
 
-	// when starting/restarting worker, get the works that already existed and run
-	if err = worker.RunJobsAssigned(); err != nil {
+	// when starting/restarting server, get the works that already existed and run
+	if err = server.RunJobsAssigned(); err != nil {
 		log.Println(err)
 	}
 
-	// wait until worker close
-	worker.WaitUntilClose()
+	// wait until server close
+	server.WaitUntilClose()
 }
 
-func initLog(workerName string) *os.File {
+func initLog(serverName string) *os.File {
 	// set output
 	userHome := os.Getenv("HOME")
 	if userHome == "" {
@@ -103,7 +103,7 @@ func initLog(workerName string) *os.File {
 		log.Fatalln("Fail to make directory for the log file", err)
 	}
 
-	logFile, err := os.OpenFile(path.Join(logDir, workerName + ".log"),
+	logFile, err := os.OpenFile(path.Join(logDir, serverName + ".log"),
 		os.O_CREATE|os.O_WRONLY|os.O_APPEND,0664)
 	if err != nil {
 		log.Fatalln("Fail to open the log file", err)
@@ -112,7 +112,7 @@ func initLog(workerName string) *os.File {
 	log.SetOutput(logFile)
 
 	// set format
-	log.SetPrefix(workerName + " ")
+	log.SetPrefix(serverName + " ")
 	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Lshortfile)
 
 	return logFile
