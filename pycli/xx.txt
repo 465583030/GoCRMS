@@ -1,0 +1,470 @@
+[weliu@fnode332 pycli]$ python start_servers.py svr2_ 100 100 172.20.0.18:12379
+Job <431070> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+[weliu@fnode332 pycli]$ python start_servers.py svr3_ 100 100 172.20.0.18:12379
+Job <431085> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   PEND  pwodebug   fnode332                *.18:12379 Apr  8 19:35
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+[weliu@fnode332 pycli]$ python start_servers.py svr3_ 100 100 172.20.0.18:12379
+Job <431108> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431108  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:36
+[weliu@fnode332 pycli]$ python start_servers.py svr4_ 100 100 172.20.0.18:12379
+Job <431165> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+[weliu@fnode332 pycli]$ python start_servers.py svr5_ 100 100 172.20.0.18:12379
+Job <431197> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+500
+[weliu@fnode332 pycli]$ python start_servers.py svr6_ 100 100 172.20.0.18:12379
+Job <431238> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431238  weliu   PEND  pwodebug   fnode332                *.18:12379 Apr  8 19:39
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+[weliu@fnode332 pycli]$ python start_servers.py svr7_ 100 100 172.20.0.18:12379
+Job <431276> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+700
+[weliu@fnode332 pycli]$ python start_servers.py svr8_ 100 100 172.20.0.18:12379
+Job <431293> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+431293  weliu   PEND  pwodebug   fnode332                *.18:12379 Apr  8 19:40
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+[weliu@fnode332 pycli]$ python performance_test.py 8000 2 800 172.20.0.18:12379 100
+start performance test for GoCRMS
+connect etcd 172.20.0.18:12379
+closejob count: 0000
+Summary:
+total 8000 running on 800 servers
+average create to running: 0:00:00.042673
+total start cost (last running - first create on client) 0:00:25.284000
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+800
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/assign | wc -l
+0
+[weliu@fnode332 pycli]$ python performance_test.py 8000 2 800 172.20.0.18:12379 100
+start performance test for GoCRMS
+connect etcd 172.20.0.18:12379
+closejob count: 0000
+Summary:
+total 8000 running on 799 servers
+average create to running: 0:00:00.265671
+total start cost (last running - first create on client) 0:00:22.899000
+[weliu@fnode332 pycli]$ python performance_test.py 16000 2 800 172.20.0.18:12379 100
+start performance test for GoCRMS
+connect etcd 172.20.0.18:12379
+closejob count: 00000
+Summary:
+total 16000 running on 800 servers
+average create to running: 0:00:00.099871
+total start cost (last running - first create on client) 0:00:48.272000
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/assign | wc -l
+0
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+800
+[weliu@fnode332 pycli]$ python start_servers.py svr9_ 100 100 172.20.0.18:12379
+Job <431590> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+431590  weliu   PEND  pwodebug   fnode332                *.18:12379 Apr  8 19:47
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+431590  weliu   PEND  pwodebug   fnode332                *.18:12379 Apr  8 19:47
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+[weliu@fnode332 pycli]$ python start_servers.py svr10_ 100 100 172.20.0.18:12379
+Job <431623> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1000
+[weliu@fnode332 pycli]$ python performance_test.py 10000 2 1000 172.20.0.18:12379 100
+start performance test for GoCRMS
+connect etcd 172.20.0.18:12379
+closejob count: 0000
+Summary:
+total 10000 running on 1000 servers
+average create to running: 0:00:00.427678
+total start cost (last running - first create on client) 0:00:29.359000
+[weliu@fnode332 pycli]$ python start_servers.py svr11_ 100 100 172.20.0.18:12379
+Job <431798> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1100
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+431798  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:52
+[weliu@fnode332 pycli]$ python performance_test.py 11000 2 1100 172.20.0.18:12379 100
+start performance test for GoCRMS
+connect etcd 172.20.0.18:12379
+closejob count: 00000
+Summary:
+total 11000 running on 1100 servers
+average create to running: 0:00:00.145534
+total start cost (last running - first create on client) 0:00:34.711000
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1100
+[weliu@fnode332 pycli]$ python start_servers.py svr12_ 100 100 172.20.0.18:12379
+Job <432030> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+431798  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:52
+432030  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:58
+[weliu@fnode332 pycli]$ python performance_test.py 12000 2 1200 172.20.0.18:12379 100
+start performance test for GoCRMS
+connect etcd 172.20.0.18:12379
+closejob count:      0
+Summary:
+total 12000 running on 1200 servers
+average create to running: 0:00:00.108644
+total start cost (last running - first create on client) 0:00:36.305000
+[weliu@fnode332 pycli]$ python start_servers.py svr13_ 100 100 172.20.0.18:12379
+Job <432083> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+432083  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:00
+431798  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:52
+432030  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:58
+[weliu@fnode332 pycli]$ python performance_test.py 13000 2 1300 172.20.0.18:12379 100
+start performance test for GoCRMS
+connect etcd 172.20.0.18:12379
+closejob count:      0
+Summary:
+total 13000 running on 1278 servers
+average create to running: 0:00:00.044377
+total start cost (last running - first create on client) 0:02:10.984000
+[weliu@fnode332 pycli]$ python performance_test.py 13000 2 1300 172.20.0.18:12379 100
+start performance test for GoCRMS
+connect etcd 172.20.0.18:12379
+left job count:    132
+
+^C
+^Z
+[1]+  Stopped                 /gpfs/software/tflex_pwo_nightly/LSF/python/bin/tachyon_python performance_test.py 13000 2 1300 172.20.0.18:12379 100
+[weliu@fnode332 pycli]$ jobs
+[1]+  Stopped                 /gpfs/software/tflex_pwo_nightly/LSF/python/bin/tachyon_python performance_test.py 13000 2 1300 172.20.0.18:12379 100
+[weliu@fnode332 pycli]$ ps aux | grep perf
+weliu    562002 10.6  0.0 885516 107652 pts/1   Tl   20:05   0:48 /gpfs/software/tflex_pwo_nightly/LSF/python/bin/python performance_test.py 13000 2 1300 172.20.0.18:12379 100
+[weliu@fnode332 pycli]$ kill -9 562002
+[weliu@fnode332 pycli]$ ps aux | grep perf
+weliu    562798  0.0  0.0 103308   880 pts/1    S+   20:13   0:00 grep perf
+[1]+  Killed                  /gpfs/software/tflex_pwo_nightly/LSF/python/bin/tachyon_python performance_test.py 13000 2 1300 172.20.0.18:12379 100
+[weliu@fnode332 pycli]$ ps aux | grep perf
+weliu    562800  0.0  0.0 103308   884 pts/1    S+   20:13   0:00 grep perf
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1232
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep close | wc -l
+0
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1232
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/assign | wc -l
+264
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 del --prefix crms/assign
+132
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/assign | wc -l
+0
+[weliu@fnode332 pycli]$ python start_servers.py svr133_ 68 68 172.20.0.18:12379
+Job <432298> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+432083  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:00
+431798  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:52
+432030  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:58
+432298  weliu   PEND  pwodebug   fnode332                *.18:12379 Apr  8 20:16
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+432083  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:00
+432298  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:16
+431798  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:52
+432030  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:58
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1228
+[weliu@fnode332 pycli]$ python start_servers.py svr134_ 100 100 172.20.0.18:12379
+Job <432319> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1227
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1227
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+432083  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:00
+432298  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:16
+431798  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:52
+432030  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:58
+[weliu@fnode332 pycli]$ python start_servers.py svr135_ 100 100 172.20.0.18:12379
+Job <432335> is submitted to queue <pwodebug>.
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+432083  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:00
+432298  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:16
+431798  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:52
+432030  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:58
+432335  weliu   PEND  pwodebug   fnode332                *.18:12379 Apr  8 20:19
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+432083  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:00
+432298  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:16
+431798  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:52
+432030  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:58
+432335  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 20:19
+[weliu@fnode332 pycli]$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431590  weliu   RUN   pwodebug   fnode332    dn130808    *.18:12379 Apr  8 19:47
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431623  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:48
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+432083  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:00
+432298  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 20:16
+431798  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:52
+432030  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 19:58
+432335  weliu   RUN   pwodebug   fnode332    dn130305    *.18:12379 Apr  8 20:19
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1325
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1325
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1324
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1324
+[weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server | grep 100 | wc -l
+1324
+[weliu@fnode332 pycli]$ python performance_test.py 13000 2 1300 172.20.0.18:12379 100
+start performance test for GoCRMS
+connect etcd 172.20.0.18:12379
+left job count:     20

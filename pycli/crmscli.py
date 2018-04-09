@@ -68,8 +68,8 @@ def start_multiple_servers_by_lsf(server_count, name_prefix, parellel_count, etc
     ''' no wait for started '''
     os.system(
         # 'bsub -q pwodebug "GoCRMS %s %d %s &"'
-        'bsub -R "type==any" -q pwodebug "gocrmsstarter %d %s %d %s" &'
-        % (server_count, name_prefix, parellel_count, etcd_host_port))
+        'bsub -R "type==any" -q pwodebug "gocrmsstarter %d %d %s %s"'
+        % (server_count, parellel_count, etcd_host_port, name_prefix))
 
 
 class CrmsCli(object):

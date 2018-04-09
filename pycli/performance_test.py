@@ -307,10 +307,11 @@ class Summary(object):
             self.last_running() - self.first_create_on_client()
 
 
-logger = logging.getLogger("crms")
-jobcount = int(sys.argv[1])
-jobs_finished_count = CountDownLatch(jobcount)
-summary = Summary()
+if __name__ == "__main__":
+    logger = logging.getLogger("crms")
+    jobcount = int(sys.argv[1])
+    jobs_finished_count = CountDownLatch(jobcount)
+    summary = Summary()
 
 
 def on_job_status_changed(job):
@@ -321,7 +322,7 @@ def on_job_status_changed(job):
     elif job_state.status in ['done', 'fail']:
         logger.info('finish job %s with result %s', job.id, job_state.stdouterr)
         jobs_finished_count.count_down()
-        sys.stdout.write("left job count: %d\r" % jobs_finished_count.count)
+        sys.stdout.write("left job count: %6d\r" % jobs_finished_count.count)
         sys.stdout.flush()
 
 
@@ -353,7 +354,7 @@ def test_run_job(job_count):
                     start_servers_by_lsf(host_port, server_count)
                 else:
                     gocrms_count_per_lsf_server = int(sys.argv[5])
-                    start_multiple_servers_by_lsf(host_port, server_count, gocrms_count_per_lsf_server)
+                    start_multiple_servers_by_lsf('sv', host_port, server_count, gocrms_count_per_lsf_server)
             else:
                 start_servers(host_port, server_count)
 
@@ -364,11 +365,20 @@ def test_run_job(job_count):
         if len(servers) == 0:
             sys.exit(0)
         summary.servers = servers
+        j = 0
         for i in xrange(job_count):
             job_id = '%05d' %i
+            cmd = ['python', '-c', 'import time; time.sleep(%s); print "%s"' %(work_time, job_id)]
+
+            # get server
+            # server = random.choice(servers)
+            server = servers[j]
+            j += 1
+            if j >= len(servers):
+                j = 0
+
             logger.info('create job %s', job_id)
-            crms.create_job(job_id, ['python', '-c', 'import time; time.sleep(%s); print "%s"' %(work_time, job_id)])
-            server = random.choice(servers)
+            crms.create_job(job_id, cmd)
             logger.info('run job %s on server %s', job_id, server)
             crms.run_job(job_id, server)
 
@@ -416,16 +426,25 @@ def start_servers_by_lsf(etcd_host_port, count):
         crmscli.start_server_by_lsf(name, 100, etcd_host_port)
 
 
-def start_multiple_servers_by_lsf(etcd_host_port, gocrms_server_count, gocrms_count_per_lsf_server):
-        # each LSF server starts 100 GoCRMS server
-    left_server_count = gocrms_server_count
-    i = 0
-    while left_server_count > 0:
-        name = 'sv' + str(i)
-        i += 1
-        server_count_to_start = min(left_server_count, gocrms_count_per_lsf_server)
-        crmscli.start_multiple_servers_by_lsf(server_count_to_start, name, 100, etcd_host_port)
-        left_server_count -= gocrms_count_per_lsf_server
+def start_multiple_servers_by_lsf(name_prefix, etcd_host_port, gocrms_server_count, gocrms_count_per_lsf_server):
+    with crmscli.CrmsCli(etcd_host_port) as crms:
+        cnt = len(crms.get_servers())
+        # each LSF server starts gocrms_count_per_lsf_server GoCRMS server
+        left_server_count = gocrms_server_count
+        i = 0
+        while left_server_count > 0:
+            name = name_prefix + "_" + str(i)
+            i += 1
+            server_count_to_start = min(left_server_count, gocrms_count_per_lsf_server)
+            crmscli.start_multiple_servers_by_lsf(server_count_to_start, name, 100, etcd_host_port)
+
+            while len(crms.get_servers()) < cnt + server_count_to_start:
+                sys.stdout.write("crms servers' count: %4d\r" % len(crms.get_servers()))
+                sys.stdout.flush()
+                time.sleep(3)
+
+            left_server_count -= gocrms_count_per_lsf_server
+        print ""
 
 
 def wait_for_servers_register(crms, servers_count):

@@ -1,3 +1,5 @@
+$ python performance_test.py 8000 2 800 172.20.0.18:12379 100
+
 total 500 running on 50 servers
 average create to running: 0:00:00.004034
 total start cost (last running - first create on client) 0:00:01.021000
@@ -5,6 +7,14 @@ total start cost (last running - first create on client) 0:00:01.021000
 total 1000 running on 100 servers
 average create to running: 0:00:00.004847
 total start cost (last running - first create on client) 0:00:02.287000
+
+total 1000 running on 200 servers
+average create to running: 0:00:00.014748
+total start cost (last running - first create on client) 0:00:05.239000
+
+total 1000 running on 200 servers
+average create to running: 0:00:00.018829
+total start cost (last running - first create on client) 0:00:04.099000
 
 total 2000 running on 200 servers
 average create to running: 0:00:00.022244
@@ -26,19 +36,59 @@ total 8000 running on 256/800 servers
 average create to running: 0:00:00.011806
 total start cost (last running - first create on client) 0:00:20.558000
 
+$ bjobs
+JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+428933  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 18:43
+431238  weliu   RUN   pwodebug   fnode332    dn070601    *.18:12379 Apr  8 19:39
+960403  weliu   RUN   pwodebug   fnode332    fnode438    *cdstarter Apr  3 18:33
+431165  weliu   RUN   pwodebug   fnode332    dn131006    *.18:12379 Apr  8 19:37
+431197  weliu   RUN   pwodebug   fnode332    dn071208    *.18:12379 Apr  8 19:38
+431293  weliu   RUN   pwodebug   fnode332    dn070904    *.18:12379 Apr  8 19:40
+431070  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431085  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:35
+431276  weliu   RUN   pwodebug   fnode332    dn130405    *.18:12379 Apr  8 19:40
+
+total 8000 running on 800 servers
+average create to running: 0:00:00.042673
+total start cost (last running - first create on client) 0:00:25.284000
+
+total 8000 running on 799/800 servers
+average create to running: 0:00:00.265671
+total start cost (last running - first create on client) 0:00:22.899000
+
+total 16000 running on 800 servers
+average create to running: 0:00:00.099871
+total start cost (last running - first create on client) 0:00:48.272000
+
+total 10000 running on 1000 servers
+average create to running: 0:00:00.427678
+total start cost (last running - first create on client) 0:00:29.359000
+
+total 11000 running on 1100 servers
+average create to running: 0:00:00.145534
+total start cost (last running - first create on client) 0:00:34.711000
+
+total 12000 running on 1200 servers
+average create to running: 0:00:00.108644
+total start cost (last running - first create on client) 0:00:36.305000
+
+total 13000 running on 1278/1300 servers
+average create to running: 0:00:00.044377
+total start cost (last running - first create on client) 0:02:10.984000
 
 
+issues: when server count reach about 1000+, then adding 100 new server will not add 100, and the crms server
+count changed.
 
+possible reason:
+1. the same lsf has too many GoCRMS processed, and bsub usually assign to the same lsf server
+2. lsf or linux stop or parse some process?
+3. go exec make some GoCRMS processed zoobi (defunct)?
+4. etcd limits?
 
-
-
-
-
-
-
-
-
-
+possible solution:
+1. Can we use bsub -m to specify a lsf server?
+2. use the same GoCRMS process to connect multiple etcd server nodes?
 
 
 
