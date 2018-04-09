@@ -1,3 +1,5 @@
+// usage: gocrmsstarter <server_count> <server_name> <parellel_count> <endpoint>
+
 package main
 
 import (

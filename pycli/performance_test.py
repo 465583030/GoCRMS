@@ -27,6 +27,8 @@ from datetime import datetime
 
 LOG_PATH = "~/.gocrms/performance.log"
 USE_LSF = True
+AUTO_START_SERVER = False
+AUTO_STOP_SERVER = False
 
 def average(costs):
     '''
@@ -345,16 +347,17 @@ def test_run_job(job_count):
 
         crms.clean()
 
-        if USE_LSF:
-            if len(sys.argv) < 6:
-                start_servers_by_lsf(host_port, server_count)
+        if AUTO_START_SERVER:
+            if USE_LSF:
+                if len(sys.argv) < 6:
+                    start_servers_by_lsf(host_port, server_count)
+                else:
+                    gocrms_count_per_lsf_server = int(sys.argv[5])
+                    start_multiple_servers_by_lsf(host_port, server_count, gocrms_count_per_lsf_server)
             else:
-                gocrms_count_per_lsf_server = int(sys.argv[5])
-                start_multiple_servers_by_lsf(host_port, server_count, gocrms_count_per_lsf_server)
-        else:
-            start_servers(host_port, server_count)
+                start_servers(host_port, server_count)
 
-        wait_for_servers_register(crms, server_count)
+            wait_for_servers_register(crms, server_count)
 
         servers = crms.get_servers().keys()
         logger.info("servers: %s", servers)
@@ -372,7 +375,8 @@ def test_run_job(job_count):
         jobs_finished_count.await()
         # print_nodes(crms.nodes())
 
-        stop_servers(crms)
+        if AUTO_STOP_SERVER:
+            stop_servers(crms)
 
 
 def get_available_servers(server_count):
