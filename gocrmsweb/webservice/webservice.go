@@ -73,7 +73,7 @@ func NewWebService(endpoints []string) *WebService {
 }
 
 func (ws *WebService) GetServers() (servers []Server, err error) {
-	workers, err := ws.crms.GetWorkers()
+	workers, err := ws.crms.GetServers()
 	if err != nil {
 		return
 	}
@@ -88,7 +88,7 @@ func (ws *WebService) GetServers() (servers []Server, err error) {
 
 //TODO: rename: here worker is actually the parallel unit inside host, and host is actually worker
 func (ws *WebService) GetWorkers(host string) ([]Worker, error) {
-	worker, exist, err := ws.crms.GetWorker(host)
+	worker, exist, err := ws.crms.GetServer(host)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (ws *WebService) GetJobs() (jobs []JobDetail, err error) {
 }
 
 func (ws *WebService) GetJobsByWorker(workerName string) (jobs []JobDetail, err error) {
-	js, err := ws.crms.GetJobsByWorker(workerName)
+	js, err := ws.crms.GetJobsByServer(workerName)
 	if err != nil {
 		return
 	}
@@ -177,7 +177,7 @@ func (ws *WebService) RunJob(job RunCommand) error {
 func (ws *WebService) Shutdown(workers []string) {
 	for _, worker := range workers {
 		worker = strings.Split(worker, ":")[0]
-		if err := ws.crms.StopWorker(worker); err != nil {
+		if err := ws.crms.StopServer(worker); err != nil {
 			log.Println("Cannot shutdown:", worker, ", reason is:", err.Error())
 		}
 		log.Println("shutdown:", worker)
