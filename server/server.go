@@ -66,7 +66,7 @@ func NewServer(name string, parellelCount int, endpoints []string,
 
 	// ready to run job parellel
 	server.prepareForRun()
-	return server, err
+	return
 }
 
 func (server *Server) put(key, val string, opts ...clientv3.OpOption) error {

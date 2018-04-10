@@ -76,8 +76,21 @@ total 13000 running on 1278/1300 servers
 average create to running: 0:00:00.044377
 total start cost (last running - first create on client) 0:02:10.984000
 
+total 15000 running on 1500 servers
+average create to running: 0:00:00.044156
+total start cost (last running - first create on client) 0:00:39.068000
 
-issues: when server count reach about 1000+, then adding 100 new server will not add 100, and the crms server
+total 20000 running on 2000 servers
+average create to running: 0:00:00.323321
+total start cost (last running - first create on client) 0:00:58.539000
+
+total 20000 running on 2000 servers
+average create to running: 0:00:01.533926
+total start cost (last running - first create on client) 0:00:58.535000
+
+Issues:
+
+Issue 1: when server count reach about 1000+, then adding 100 new server will not add 100, and the crms server
 count changed.
 
 possible reason:
@@ -89,10 +102,30 @@ possible reason:
 possible solution:
 1. Can we use bsub -m to specify a lsf server?
 2. use the same GoCRMS process to connect multiple etcd server nodes?
+    Update: work! very fast. See gocrmsd to start 500 servers in the same process, bsub 4 gocrmds will starts 2000 servers and work.
 
 
 
+Issue 2: when there is too much jobs added to etcd "crms/job/" node, in python cli, get_jobs() will throw error:
+"Rendezvous of RPC that terminated with (StatusCode.RESOURCE_EXHAUSTED, Received message larger than max (5550034 vs. 4194304))".
+>>> jobs = cli.get_prefix('crms/job/')
+>>> js = [j for j in jobs]
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/gpfs/DEV/PWO/weliu/code/python2.7/site-packages/etcd3/client.py", line 42, in handler
+    _translate_exception(exc)
+  File "/gpfs/DEV/PWO/weliu/code/python2.7/site-packages/etcd3/client.py", line 39, in handler
+    for data in f(*args, **kwargs):
+  File "/gpfs/DEV/PWO/weliu/code/python2.7/site-packages/etcd3/client.py", line 276, in get_prefix
+    credentials=self.call_credentials,
+  File "/gpfs/DEV/PWO/weliu/code/python2.7/site-packages/grpc/_channel.py", line 487, in __call__
+    return _end_unary_response_blocking(state, call, False, deadline)
+  File "/gpfs/DEV/PWO/weliu/code/python2.7/site-packages/grpc/_channel.py", line 437, in _end_unary_response_blocking
+    raise _Rendezvous(state, None, None, deadline)
+grpc._channel._Rendezvous: <_Rendezvous of RPC that terminated with (StatusCode.RESOURCE_EXHAUSTED, Received message larger than max (5550034 vs. 4194304))>
 
+possible solution:
+etcdctl doesn't have the problem, so we can try Go client to see work or not.
 
 
 
