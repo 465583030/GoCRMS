@@ -1,6 +1,11 @@
 # GoCRMS
 Cluster Manager written in Go lang
 
+# TODO
+kill job assign new job
+test etcd server max count
+leaf job/host job
+
 # start worker
 ```
 GoCRMS <Worker Name> <ParellelAbility> [<etcd_host:port>=localhost:2379]
