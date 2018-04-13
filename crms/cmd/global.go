@@ -1,6 +1,8 @@
 package cmd
 
-import "time"
+import (
+	"time"
+)
 
 type GlobalFlags struct {
 	Endpoints          []string
@@ -10,4 +12,10 @@ type GlobalFlags struct {
 	Debug bool
 }
 
-var global = GlobalFlags{}
+const (
+	// Output format value
+	OutFormat_JSON = "json"
+	OutFormat_JSON_Compact = "json_compact"
+)
+
+var globalFlags = GlobalFlags{}

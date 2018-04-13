@@ -33,13 +33,13 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringSliceVar(
-		&global.Endpoints, "endpoints", []string{"127.0.0.1:2379"}, "gRPC endpoints")
+		&globalFlags.Endpoints, "endpoints", []string{"127.0.0.1:2379"}, "gRPC endpoints")
 	rootCmd.PersistentFlags().BoolVar(
-		&global.Debug, "debug", false, "enable client-side debug logging")
+		&globalFlags.Debug, "debug", false, "enable client-side debug logging")
 	rootCmd.PersistentFlags().StringVarP(
-		&global.OutputFormat, "write-out", "w", "simple", "set the output format")
+		&globalFlags.OutputFormat, "write-out", "w", "simple", "set the output format (simple, json, json_compact)")
 	rootCmd.PersistentFlags().DurationVar(
-		&global.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
+		&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
 	rootCmd.PersistentFlags().DurationVar(
-		&global.RequestTimeout, "request-timeout", defaultRequestTimeout, "request timeout for client connections")
+		&globalFlags.RequestTimeout, "request-timeout", defaultRequestTimeout, "request timeout for client connections")
 }

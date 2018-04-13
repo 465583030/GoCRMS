@@ -14,6 +14,31 @@
 #
 # Usage: python performance_test.py <num_of_jobs> [work_second=0] [server_count=1] [etcd_host:port=localhost:2379] [gocrms_count_per_lsf_server=1]
 #
+# the way to do performance test:
+# 1. Start new 1000 gocrms servers as a single process by lsf command bsub (each time need update server prefix (sm))
+# [weliu@fnode332 pycli]$ bsub -R "type==any" -q pwodebug "gocrmsd sm 100 172.20.0.18:12379 1000"
+# Job <567694> is submitted to queue <pwodebug>.
+# 2. check etcd for new servers has registered or not
+# [weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server/ | grep crms | wc -l
+# 10822
+# if not as expected, it may be starting, try to call etcdctl command again
+# [weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 get --prefix crms/server/ | grep crms | wc -l
+# 11000
+# 3. remove the previous job (as etcd/grpc pycli has bugs that grpc cannot get/watch prefix with a lot of node)
+# [weliu@fnode332 pycli]$ etcdctl --endpoints 172.20.0.18:12379 del --prefix crms/job
+# 300000
+# 4. remove previous log file (to prevent analysis performance log file too long)
+# [weliu@fnode332 pycli]$ rm -rf ~/.gocrms/
+# 5. run performance test (need to update job count (110000) and server count (11000))
+# [weliu@fnode332 pycli]$ python performance_test.py 110000 2 11000 172.20.0.18:12379 100
+# start performance test for GoCRMS
+# connect etcd 172.20.0.18:12379
+# closejob count:      0
+# Summary:
+# total 110000 running on 11000 servers
+# average create to running: 0:00:00.023847
+# total start cost (last running - first create on client) 0:05:21.004000
+#
 
 import crmscli
 import random

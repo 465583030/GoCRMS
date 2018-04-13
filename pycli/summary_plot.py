@@ -47,6 +47,10 @@ total 8000 running on 799 servers
 average create to running: 0:00:00.265671
 total start cost (last running - first create on client) 0:00:22.899000
 
+total 10000 running on 500 servers
+average create to running: 0:00:00.945842
+total start cost (last running - first create on client) 0:00:26.834000
+
 total 16000 running on 800 servers
 average create to running: 0:00:00.099871
 total start cost (last running - first create on client) 0:00:48.272000
@@ -78,6 +82,62 @@ total start cost (last running - first create on client) 0:00:58.535000
 total 30000 running on 2000 servers
 average create to running: 0:00:00.603885
 total start cost (last running - first create on client) 0:01:22.229000
+
+total 40000 running on 4000 servers
+average create to running: 0:00:00.104941
+total start cost (last running - first create on client) 0:01:42.750000
+
+total 50000 running on 5000 servers
+average create to running: 0:00:01.810397
+total start cost (last running - first create on client) 0:02:10.663000
+
+total 60000 running on 6000 servers
+average create to running: 0:00:00.019694
+total start cost (last running - first create on client) 0:02:37.674000
+
+total 70000 running on 7000 servers
+average create to running: 0:00:00.022535
+total start cost (last running - first create on client) 0:03:25.856000
+
+total 80000 running on 8000 servers
+average create to running: 0:00:00.032687
+total start cost (last running - first create on client) 0:03:35.350000
+
+total 85000 running on 8500 servers
+average create to running: 0:00:00.024135
+total start cost (last running - first create on client) 0:04:01.510000
+
+total 90000 running on 9000 servers
+average create to running: 0:00:00.020413
+total start cost (last running - first create on client) 0:04:00.679000
+
+total 100000 running on 10000 servers
+average create to running: 0:00:00.020903
+total start cost (last running - first create on client) 0:04:52.991000
+
+total 110000 running on 11000 servers
+average create to running: 0:00:00.023847
+total start cost (last running - first create on client) 0:05:21.004000
+
+total 120000 running on 12000 servers
+average create to running: 0:00:00.017404
+total start cost (last running - first create on client) 0:05:51.658000
+
+total 130000 running on 13000 servers
+average create to running: 0:00:00.016716
+total start cost (last running - first create on client) 0:06:26.879000
+
+total 140000 running on 14000 servers
+average create to running: 0:00:00.014258
+total start cost (last running - first create on client) 0:06:44.265000
+
+total 150000 running on 15000 servers
+average create to running: 0:00:00.018164
+total start cost (last running - first create on client) 0:07:28.832000
+
+total 170000 running on 17000 servers
+average create to running: 0:00:00.014553
+total start cost (last running - first create on client) 0:07:55.137000
 """
 
 class Summary:

@@ -17,6 +17,8 @@ import json
 import thread
 import os
 import threading
+import grpc
+import subprocess
 from etcd3.events import PutEvent
 from etcd3.events import DeleteEvent
 
@@ -74,6 +76,7 @@ def start_multiple_servers_by_lsf(server_count, name_prefix, parellel_count, etc
 
 class CrmsCli(object):
     def __init__(self, host_port='localhost:2379'):
+        self.host_port = host_port
         hp = host_port.split(':')
         host = hp[0]
         port = int(hp[1])
@@ -185,11 +188,33 @@ class CrmsCli(object):
         drwxr-xr-x 1 weliu 1049089       0 Jan  2 09:47 cluster
         '''
         jobs = self.cli.get_prefix(JOB_PREFIX)
-        for job in jobs:
-            k = job[1].key
-            v = job[0]
-            self.__update_job(k, v)
+        try:
+            for job in jobs:
+                k = job[1].key
+                v = job[0]
+                self.__update_job(k, v)
+        except grpc.RpcError:
+            json_jobs = self.__exec_jobs_from_go_cli_cmd()
+            self.__from_json_jobs(json_jobs)
         return self.__jobs
+
+    def __exec_jobs_from_go_cli_cmd(self):
+        cmd = ["crms", "jobs", "--endpoints", self.host_port, "-w", "json_compact"]
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        jobs = json.load(p.stdout)
+        if p.wait() != 0:
+            raise Exception("fail to execute command: " + str(cmd))
+        return jobs
+
+    def __from_json_jobs(self, json_jobs):
+        for jjob in json_jobs:
+            job = Job()
+            job.id = jjob['ID']
+            job.command = jjob['Command']
+            jstatus = jjob['State']
+            job.state.status = jstatus['Status']
+            job.state.stdouterr = jstatus['Stdouterr']
+            self.__jobs[job.id] = job
 
     def __watch_jobs(self):
         events, self.__cancelWatchJobs = self.cli.watch_prefix(JOB_PREFIX)

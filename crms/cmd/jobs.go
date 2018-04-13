@@ -73,7 +73,7 @@ var jobsCmd = &cobra.Command{
 	Short: "Print the jobs of crms",
 	Long:  `Print the jobs of crms in a table format`,
 	Run: func(cmd *cobra.Command, args []string) {
-		crms, err := gocrmscli.New(global.Endpoints, global.DialTimeout, global.RequestTimeout)
+		crms, err := gocrmscli.New(globalFlags.Endpoints, globalFlags.DialTimeout, globalFlags.RequestTimeout)
 		defer crms.Close()
 		if err != nil {
 			log.Fatalln(err)
@@ -89,9 +89,17 @@ var jobsCmd = &cobra.Command{
 			i++
 		}
 		sort.Sort(SortableJobs(sortedJobs))
-		for _, job := range sortedJobs {
-			cmd := formatCommand(job.Command)
-			fmt.Printf("%6s\t%8s\t%s\n", job.ID, job.GetStatus(), cmd)
+		if isJsonKind() {
+			out, err := toJson(sortedJobs)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			fmt.Println(string(out))
+		} else {
+			for _, job := range sortedJobs {
+				cmd := formatCommand(job.Command)
+				fmt.Printf("%6s\t%8s\t%s\n", job.ID, job.GetStatus(), cmd)
+			}
 		}
 	},
 }
