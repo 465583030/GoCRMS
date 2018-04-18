@@ -40,7 +40,7 @@ type Crms struct {
 	cancelables        OnceFuncs
 }
 
-func New(cfg clientv3.Config, requestTimeout time.Duration) (*Crms, error) {
+func NewCrms(cfg clientv3.Config, requestTimeout time.Duration) (*Crms, error) {
 	cli, err := clientv3.New(cfg)
 	if err != nil {
 		return nil, err
@@ -124,6 +124,20 @@ func (crms *Crms) WatchServers(handler ServerWatchHandler) *OnceFunc {
 func (crms *Crms) StopServer(name string) error {
 	_, err := crms.etcd.Put(serverNode(name), CloseServer)
 	return err
+}
+
+func (crms *Crms) StopAllServers() error {
+	servers, err := crms.GetServers()
+	if err != nil {
+		return err
+	}
+	var errs []error
+	for _, server := range servers {
+		if e := crms.StopServer(server.Name); e != nil {
+			errs = append(errs, e)
+		}
+	}
+	return NewComposableError(errs)
 }
 
 // jobCommand is an array of each part of the command
@@ -228,4 +242,14 @@ func (crms *Crms) WatchJobOut(id string, handler JobOutWatchHandler) *OnceFunc {
 	rch, cancel := crms.etcd.Watch(jobOutNode(id))
 	go HandleWatchEvt(rch, JobOutHandlerFactory(handler))
 	return crms.cancelables.Add(cancel)
+}
+
+func (crms *Crms) Reset() error {
+	err := crms.StopAllServers()
+	if err != nil {
+		return err
+	}
+	// remove all node under crms/
+	_, err = crms.etcd.DeleteWithPrefix(CrmsNodePrefix)
+	return err
 }
