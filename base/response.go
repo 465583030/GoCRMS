@@ -1,15 +1,20 @@
 package base
 
-import "github.com/coreos/etcd/clientv3"
+import (
+	"github.com/coreos/etcd/clientv3"
+	"errors"
+)
 
 type KV struct {
 	K string
 	V string
 }
 
-type GetResponse clientv3.GetResponse
+type GetResponse struct {
+	*clientv3.GetResponse
+}
 
-func (resp *GetResponse) KeyValues() []KV {
+func (resp GetResponse) KeyValues() []KV {
 	kvs := make([]KV, len(resp.Kvs))
 	for i, kv := range resp.Kvs {
 		k := string(kv.Key)
@@ -19,6 +24,13 @@ func (resp *GetResponse) KeyValues() []KV {
 	return kvs
 }
 
-func (resp *GetResponse) Value() (string, error) {
+func (resp GetResponse) Value() (string, error) {
+	if len(resp.Kvs) != 1 {
+		return "", errors.New("clientv3.GetResponse's KVs' len is not 1")
+	}
+	return string(resp.Kvs[0].Value), nil
+}
 
+func (resp *GetResponse) Len() int {
+	return len(resp.Kvs)
 }

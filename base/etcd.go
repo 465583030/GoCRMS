@@ -6,23 +6,19 @@ import (
 	"time"
 )
 
-
-
-func ParseGetResponse(resp *clientv3.GetResponse) []KV {
-	kvs := make([]KV, len(resp.Kvs))
-	for i, kv := range resp.Kvs {
-		k := string(kv.Key)
-		v := string(kv.Value)
-		kvs[i] = KV{k, v}
-	}
-	return kvs
-}
-
 type Etcd struct {
 	*clientv3.Client
 	requestTimeout     time.Duration
 }
 
+// Get retrieves keys.
+// By default, Get will return the value for "key", if any.
+// When passed WithRange(end), Get will return the keys in the range [key, end).
+// When passed WithFromKey(), Get returns keys greater than or equal to key.
+// When passed WithRev(rev) with rev > 0, Get retrieves keys at the given revision;
+// if the required revision is compacted, the request will fail with ErrCompacted .
+// When passed WithLimit(limit), the number of returned keys is bounded by limit.
+// When passed WithSort(), the keys will be sorted.
 func (etcd *Etcd) Get(key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), etcd.requestTimeout)
 	defer cancel()
@@ -33,7 +29,7 @@ func (etcd *Etcd) GetWithPrefix(keyPrefix string) (*clientv3.GetResponse, error)
 	return etcd.Get(keyPrefix, clientv3.WithPrefix())
 }
 
-func (etcd *Etcd) GetWithRange(startKey string, endKey string) (*clientv3.GetResponse, error) {
+func (etcd *Etcd) GetWithRange(startKey, endKey string) (*clientv3.GetResponse, error) {
 	return etcd.Get(startKey, clientv3.WithRange(endKey))
 }
 
@@ -46,7 +42,7 @@ func (etcd *Etcd) WatchWithPrefix(keyPrefix string) (clientv3.WatchChan, context
 	return etcd.Watch(keyPrefix, clientv3.WithPrefix())
 }
 
-func (etcd *Etcd) WatchWithRange(startKey string, endKey string) (clientv3.WatchChan, context.CancelFunc) {
+func (etcd *Etcd) WatchWithRange(startKey, endKey string) (clientv3.WatchChan, context.CancelFunc) {
 	return etcd.Watch(startKey, clientv3.WithRange(endKey))
 }
 
@@ -56,12 +52,43 @@ func (etcd *Etcd) Delete(key string, opts ...clientv3.OpOption) (*clientv3.Delet
 	return etcd.Client.Delete(ctx, key, opts...)
 }
 
+func (etcd *Etcd) DeleteAndReturnPrevValue(key string) (prevValue string, exist bool, err error) {
+	resp, err := etcd.Delete(key, clientv3.WithPrevKV())
+	if err != nil {
+		return
+	}
+	if exist = resp.Deleted > 0 && len(resp.PrevKvs) > 0; exist {
+		prevValue = string(resp.PrevKvs[0].Value)
+	}
+	return
+}
+
+
 func (etcd *Etcd) DeleteWithPrefix(keyPrefix string) (*clientv3.DeleteResponse, error) {
 	return etcd.Delete(keyPrefix, clientv3.WithPrefix())
 }
 
-func (etcd *Etcd) DeleteWithRange(startKey string, endKey string) (*clientv3.DeleteResponse, error) {
+func (etcd *Etcd) DeleteWithRange(startKey, endKey string) (*clientv3.DeleteResponse, error) {
 	return etcd.Delete(startKey, clientv3.WithRange(endKey))
+}
+
+// put doesn't support opts: clientv3.WithPrefix(), clientv3.WithRange(endKey)
+// to get the previous value, use use option WithPrevKV
+func (etcd *Etcd) Put(key, value string, opts ...clientv3.OpOption) (*clientv3.PutResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), etcd.requestTimeout)
+	defer cancel()
+	return etcd.Client.Put(ctx, key, value, opts...)
+}
+
+func (etcd *Etcd) PutAndReturnPrevValue(key, value string) (prevValue string, exist bool, err error) {
+	resp, err := etcd.Put(key, value, clientv3.WithPrevKV())
+	if err != nil {
+		return
+	}
+	if exist = resp.PrevKv != nil; exist {
+		prevValue = string(resp.PrevKv.Value)
+	}
+	return
 }
 
 func (etcd *Etcd) GetNodes(prefix string) ([]KV, error) {
@@ -69,5 +96,5 @@ func (etcd *Etcd) GetNodes(prefix string) ([]KV, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetResponse(resp), nil
+	return GetResponse{resp}.KeyValues(), nil
 }
