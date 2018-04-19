@@ -9,13 +9,13 @@ func TestComposableError(t *testing.T) {
 	// define error variable
 	var err error
 	// test 0 error
-	err = NewComposableError([]error{})
+	err = ComposeErrors([]error{})
 	if err != nil {
 		t.Error(err)
 	}
 
 	// test 1 error
-	err = NewComposableError([]error{
+	err = ComposeErrors([]error{
 		errors.New("not wenzhe's error"),
 	})
 	if err.Error() != "not wenzhe's error" {
@@ -23,7 +23,7 @@ func TestComposableError(t *testing.T) {
 	}
 
 	// test 3 errors
-	err = NewComposableError([]error{
+	err = ComposeErrors([]error{
 		errors.New("not wenzhe's error"),
 		errors.New("should be your error"),
 		errors.New("never my error"),

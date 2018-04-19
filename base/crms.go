@@ -77,7 +77,8 @@ func (crms *Crms) GetServers() (servers []*Server, err error) {
 	kvs := GetResponse{resp}.KeyValues()
 	servers = make([]*Server, len(kvs))
 	for i, kv := range kvs {
-		server, err := NewServer(kv.K, kv.V)
+		name := kv.K[len(ServerNodePrefix):]
+		server, err := NewServer(name, kv.V)
 		if err != nil {
 			return nil, err
 		}
@@ -91,31 +92,13 @@ func (crms *Crms) UpdateServer(server *Server) error {
 	return err
 }
 
-func (crms *Crms) CloseAllServers() (int, error) {
-	servers, err := crms.GetServers()
-	if err != nil {
-		return 0, err
-	}
-	count := 0
-	for _, server := range servers {
-		if !server.Closed {
-			server.Closed = true
-			if err = crms.UpdateServer(server); err != nil {
-				return count, err
-			}
-			count++
-		}
-	}
-	return count, nil
-}
-
-func (crms *Crms) WatchServer(name string, handler ServerWatchHandler) *OnceFunc {
+func (crms *Crms) WatchServer(name string, handler ServerWatchHandler) (cancelFunc *OnceFunc) {
 	rch, cancel := crms.etcd.Watch(serverNode(name))
 	go HandleWatchEvt(rch, ServerHandlerFactory(handler))
 	return crms.cancelables.Add(cancel)
 }
 
-func (crms *Crms) WatchServers(handler ServerWatchHandler) *OnceFunc {
+func (crms *Crms) WatchServers(handler ServerWatchHandler) (cancelFunc *OnceFunc) {
 	rch, cancel := crms.etcd.WatchWithPrefix(ServerNodePrefix)
 	go HandleWatchEvt(rch, ServerHandlerFactory(handler))
 	return crms.cancelables.Add(cancel)
@@ -126,18 +109,21 @@ func (crms *Crms) StopServer(name string) error {
 	return err
 }
 
-func (crms *Crms) StopAllServers() error {
+func (crms *Crms) StopAllServers() (count int, err error) {
 	servers, err := crms.GetServers()
 	if err != nil {
-		return err
+		return
 	}
 	var errs []error
 	for _, server := range servers {
-		if e := crms.StopServer(server.Name); e != nil {
-			errs = append(errs, e)
+		if !server.Closed {
+			if e := crms.StopServer(server.Name); e != nil {
+				errs = append(errs, e)
+			}
+			count++
 		}
 	}
-	return NewComposableError(errs)
+	return count, ComposeErrors(errs)
 }
 
 // jobCommand is an array of each part of the command
@@ -245,11 +231,19 @@ func (crms *Crms) WatchJobOut(id string, handler JobOutWatchHandler) *OnceFunc {
 }
 
 func (crms *Crms) Reset() error {
-	err := crms.StopAllServers()
+	_, err := crms.StopAllServers()
 	if err != nil {
 		return err
 	}
 	// remove all node under crms/
 	_, err = crms.etcd.DeleteWithPrefix(CrmsNodePrefix)
 	return err
+}
+
+func (crms *Crms) Nodes() ([]KV, error) {
+	resp, err := crms.etcd.GetWithPrefix(CrmsNodePrefix)
+	if err != nil {
+		return nil, err
+	}
+	return GetResponse{resp}.KeyValues(), nil
 }

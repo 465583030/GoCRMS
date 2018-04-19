@@ -76,7 +76,13 @@ func (h *serverWatchHandlerAdapter) OnDelete() {
 
 func ServerHandlerFactory(handler ServerWatchHandler) WatchHandlerFactory {
 	return func(k, v string) (WatchHandler, error) {
-		server, err := NewServer(k, v)
+		var name string
+		if n := len(ServerNodePrefix); k[:n] == ServerNodePrefix {
+			name = k[n:]
+		} else {
+			name = k
+		}
+		server, err := NewServer(name, v)
 		return &serverWatchHandlerAdapter{
 			server: server,
 			handler: handler,
