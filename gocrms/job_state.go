@@ -1,4 +1,4 @@
-package base
+package gocrms
 
 const (
 	StatusNew     = "new"

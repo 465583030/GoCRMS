@@ -1,4 +1,4 @@
-package base
+package gocrms
 
 import (
 	"github.com/coreos/etcd/clientv3"

@@ -1,4 +1,4 @@
-package base
+package gocrms
 
 type JobOut struct {
 	ID string
