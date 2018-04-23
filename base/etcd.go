@@ -80,6 +80,11 @@ func (etcd *Etcd) Put(key, value string, opts ...clientv3.OpOption) (*clientv3.P
 	return etcd.Client.Put(ctx, key, value, opts...)
 }
 
+func (etcd *Etcd) PutTempNode(key, value string, leaseID clientv3.LeaseID) error {
+	_, err := etcd.Put(key, value, clientv3.WithLease(leaseID))
+	return err
+}
+
 func (etcd *Etcd) PutAndReturnPrevValue(key, value string) (prevValue string, exist bool, err error) {
 	resp, err := etcd.Put(key, value, clientv3.WithPrevKV())
 	if err != nil {
@@ -91,10 +96,23 @@ func (etcd *Etcd) PutAndReturnPrevValue(key, value string) (prevValue string, ex
 	return
 }
 
-func (etcd *Etcd) GetNodes(prefix string) ([]KV, error) {
-	resp, err := etcd.Get(prefix, clientv3.WithPrefix())
-	if err != nil {
-		return nil, err
+func (etcd *Etcd) Timeout(seconds int64) (id clientv3.LeaseID, cancel context.CancelFunc, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), etcd.requestTimeout)
+	if grantResp, err := etcd.Grant(ctx, seconds); err == nil {
+		id = grantResp.ID
 	}
-	return GetResponse{resp}.KeyValues(), nil
+	return
+}
+
+func (etcd *Etcd) KeepAliveOnce(id clientv3.LeaseID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), etcd.requestTimeout)
+	defer cancel()
+	_, err := etcd.Client.KeepAliveOnce(ctx, id)
+	return err
+}
+
+func (etcd *Etcd) KeepAliveForever(id clientv3.LeaseID) (context.CancelFunc, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), etcd.requestTimeout)
+	_, err := etcd.Client.KeepAlive(ctx, id)
+	return cancel, err
 }

@@ -4,6 +4,8 @@ import (
 	"testing"
 	"github.com/coreos/etcd/clientv3"
 	"time"
+	"fmt"
+	"errors"
 )
 
 func TestEtcd(t *testing.T) {
@@ -21,6 +23,64 @@ func TestEtcd(t *testing.T) {
 	// make sure test/** is not existed before and after testing
 	etcd.DeleteWithPrefix("test/")
 	defer etcd.DeleteWithPrefix("test/")
+
+	// test put temp node (call go routine early to shorter time test wait time)
+	const maxTimeout = 9 * time.Second
+	const timeoutSecond = 5
+	const timeout = time.Duration(timeoutSecond) * time.Second
+	leaseID1, cancelTimeout1, err := etcd.Timeout(timeoutSecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cancelTimeout1()
+	err = etcd.PutTempNode("test/Tmp1", "1", leaseID1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test get temp node (5s), without any keep alive action, the actual life should be 5s
+	tmpNode1Life, err1Chan := goGetNodeDuration(&etcd, timeout, maxTimeout, "test/Tmp1", "1", -1,nil)
+
+	// test get temp node (5s),  keep alive once on 3s, the actual life should extend to 8s
+	leaseID2, cancelTimeout2, err := etcd.Timeout(timeoutSecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cancelTimeout2()
+	err = etcd.PutTempNode("test/Tmp2", "2", leaseID2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpNode2Life, err2Chan := goGetNodeDuration(&etcd, timeout, maxTimeout, "test/Tmp2", "2",
+		3 * time.Second, func() error {
+			return etcd.KeepAliveOnce(leaseID2)
+		})
+
+	// test get temp node (1s), keep alive forever, only cancel can make it close
+	leaseID3, cancelTimeout3, err := etcd.Timeout(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cancelTimeout3()
+	err = etcd.PutTempNode("test/Tmp3", "3", leaseID3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cancel3, err := etcd.KeepAliveForever(leaseID3)
+	defer cancel3()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpNode3Life, err3Chan := goGetNodeDuration(&etcd, 1 * time.Second, maxTimeout, "test/Tmp3", "3",
+		6 * time.Second, func() error {
+			cancel3()
+			return nil
+		})
+
+	// test get temp node (1s), keep alive forever, only cancel can make it close
+	//etcd.KeepAlive
+	//tmpNode4Life, err4Chan := goPutTempNode(&etcd, 5, maxTimeout, "test/Tmp4", "4",
+	//	nil, nil)
 
 	// test get non-exist node
 	getResp, err := etcd.Get("test/not exist")
@@ -196,10 +256,10 @@ func TestEtcd(t *testing.T) {
 		t.Fatal(err)
 	}
 	if delResp.Deleted != 3 {
-		t.Fatal(delResp.Deleted)
+		t.Error(delResp.Deleted)
 	}
 	if len(delResp.PrevKvs) != 3 {
-		t.Fatal(delResp.PrevKvs)
+		t.Error(delResp.PrevKvs)
 	}
 	kv = delResp.PrevKvs[0]
 	if string(kv.Key) != "test/a/b/11" || string(kv.Value) != "1111" {
@@ -309,6 +369,60 @@ func TestEtcd(t *testing.T) {
 	} {
 		t.Fatal(resAB)
 	}
+
+	// verify temp node life
+	select {
+	case life, ok := <-tmpNode1Life:
+		if !ok {
+			t.Error(ok)
+		} else if life < 4500 * time.Millisecond || life > 5500 * time.Millisecond {
+			t.Error(life)
+		}
+	case err := <- err1Chan:
+		t.Error(err)
+	case <- time.After(maxTimeout):
+		t.Error("time out")
+	}
+	select {
+	case life, ok := <-tmpNode2Life:
+		if !ok {
+			t.Error(ok)
+		} else if life < 7500 * time.Millisecond || life > 8500 * time.Millisecond {
+			t.Error(life)
+		}
+	case err := <- err2Chan:
+		t.Error(err)
+	case <- time.After(maxTimeout):
+		t.Error("time out")
+	}
+	// test keep alive once/forever after the node life, should get an error
+	const errNoLease = "etcdserver: requested lease not found"
+	if err := etcd.KeepAliveOnce(leaseID1); err == nil || err.Error() != errNoLease {
+		t.Error(err)
+	}
+	//if _, err := etcd.KeepAliveForever(leaseID1); err == nil || err.Error() != errNoLease {
+	//	t.Error(err)
+	//}
+
+	select {
+	case life := <-tmpNode3Life:
+		if life < 6 * time.Second || life >= 8500 * time.Millisecond {
+			t.Error(life)
+		}
+	case err := <- err3Chan:
+		// should not go into this case
+		t.Error(err)
+	case <- time.After(maxTimeout):
+		t.Error("time out")
+	}
+
+
+	// test get temp node (5s),  keep alive once after the node life, should get an error
+
+
+	//etcd.KeepAliveOnce(leaseID)
+
+	// test get nodes that has value
 }
 
 func handle(rch clientv3.WatchChan, result chan<- []WatchEvtData) {
@@ -326,4 +440,115 @@ func handle(rch clientv3.WatchChan, result chan<- []WatchEvtData) {
 	}
 	result <- evts
 	close(result)
+}
+
+func goPutTempNode(etcd *Etcd, timeoutSecond int64, maxTimeout time.Duration, key, value string,
+	onLast2Seconds, afterNodeDeleted func(id clientv3.LeaseID) error) (<-chan time.Duration, <-chan error) {
+	lifeChan := make(chan time.Duration)
+	errChan := make(chan error)
+	go func() {
+		life, err := putTempNode(etcd, timeoutSecond, maxTimeout, key, value, onLast2Seconds, afterNodeDeleted)
+		if err != nil {
+			errChan <- err
+		} else {
+			lifeChan <- life
+		}
+	}()
+	return lifeChan, errChan
+}
+
+func putTempNode(etcd *Etcd, timeoutSecond int64, maxTimeout time.Duration, key, value string,
+	onLast2Seconds, afterNodeDeleted func(id clientv3.LeaseID) error) (time.Duration, error) {
+	timeout := time.Duration(timeoutSecond) * time.Second
+	leaseID, cancelTimeout, err := etcd.Timeout(timeoutSecond)
+	defer cancelTimeout()
+	if err != nil {
+		return 0, err
+	}
+	err = etcd.PutTempNode(key, value, leaseID)
+	if err != nil {
+		return 0, err
+	}
+	tmpNodeStep := timeout / 100
+	tmpNodeLife := time.Duration(0)
+	for ; tmpNodeLife < maxTimeout; tmpNodeLife += tmpNodeStep {
+		getResp, err := etcd.Get(key)
+		if err != nil {
+			return tmpNodeLife, err
+		}
+		resp := GetResponse{getResp}
+		if resp.Len() == 0 {
+			if afterNodeDeleted == nil {
+				break
+			}
+			if err := afterNodeDeleted(leaseID); err != nil {
+				return tmpNodeLife, err
+			}
+			afterNodeDeleted = nil
+		} else {
+			v, err := resp.Value()
+			if err != nil {
+				return tmpNodeLife, err
+			}
+			if v != value {
+				return tmpNodeLife, errors.New(
+					fmt.Sprintf("expected %v but actual %v", value, v))
+			}
+			if tmpNodeLife == timeout - 2 * time.Second && onLast2Seconds != nil {
+				if err := onLast2Seconds(leaseID); err != nil {
+					return tmpNodeLife, err
+				}
+			}
+		}
+		time.Sleep(tmpNodeStep)
+	}
+	return tmpNodeLife, err
+}
+
+func goGetNodeDuration(etcd *Etcd, timeout, maxTimeout time.Duration, key, value string,
+	cbTime time.Duration, callback func() error) (<-chan time.Duration, <-chan error) {
+	lifeChan := make(chan time.Duration)
+	errChan := make(chan error)
+	go func() {
+		life, err := getNodeDuration(etcd, timeout, maxTimeout, key, value, cbTime, callback)
+		if err != nil {
+			errChan <- err
+		} else {
+			lifeChan <- life
+		}
+	}()
+	return lifeChan, errChan
+}
+
+func getNodeDuration(etcd *Etcd, timeout, maxTimeout time.Duration, key, value string,
+	cbTime time.Duration, callback func() error) (time.Duration, error) {
+	tmpNodeStep := timeout / 100
+	tmpNodeLife := time.Duration(0)
+	for ; tmpNodeLife < maxTimeout; tmpNodeLife += tmpNodeStep {
+		getResp, err := etcd.Get(key)
+		if err != nil {
+			return tmpNodeLife, err
+		}
+		resp := GetResponse{getResp}
+		if resp.Len() == 0 {
+			break
+		} else {
+			v, err := resp.Value()
+			if err != nil {
+				return tmpNodeLife, err
+			}
+			if v != value {
+				return tmpNodeLife, errors.New(
+					fmt.Sprintf("expected %v but actual %v", value, v))
+			}
+			if callback != nil && tmpNodeLife >= cbTime {
+				if err := callback(); err != nil {
+					return tmpNodeLife, err
+				}
+				callback = nil
+			}
+		}
+		time.Sleep(tmpNodeStep)
+	}
+	return tmpNodeLife, nil
 }
