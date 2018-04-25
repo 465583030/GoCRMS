@@ -7,7 +7,14 @@ import (
 
 type ComposableError []error
 
-func ComposeErrors(errs []error) error {
+func ComposeErrors(errors []error) error {
+	// remove nil from the slice
+	errs := make([]error, 0, len(errors))
+	for _, e := range errors {
+		if e != nil {
+			errs = append(errs, e)
+		}
+	}
 	if len(errs) == 0 {
 		return nil // not an error
 	} else {

@@ -23,8 +23,12 @@ func jobNode(jobId string) string {
 	return JobNodePrefix + jobId
 }
 
+func assignServerNode(server string) string {
+	return AssignNodePrefix + server
+}
+
 func assignNode(server, jobId string) string {
-	return AssignNodePrefix + server + "/" + jobId
+	return assignServerNode(server) + "/" + jobId
 }
 
 func jobStateNode(jobId string) string {
@@ -57,16 +61,22 @@ func (crms *Crms) Close() {
 	crms.etcd.Close()
 }
 
-func (crms *Crms) GetServer(name string) (server *Server, err error) {
+func (crms *Crms) GetServer(name string) (server *Server, exist bool, err error) {
 	resp, err := crms.etcd.Get(serverNode(name))
 	if err != nil {
 		return
 	}
+	r := GetResponse{resp}
+	if r.Len() == 0 {
+		return nil, false, nil
+	}
+	exist = true
 	v, err := GetResponse{resp}.Value()
 	if err != nil {
 		return
 	}
-	return NewServer(name, v)
+	server, err = NewServer(name, v)
+	return
 }
 
 func (crms *Crms) GetServers() (servers []*Server, err error) {
@@ -203,6 +213,11 @@ func (crms *Crms) WatchJobState(id string, handler JobStateWatchHandler) *OnceFu
 	return crms.cancelables.Add(cancel)
 }
 
+func (crms *Crms) UpdateJobState(id string, state string) error {
+	_, err := crms.etcd.Put(jobStateNode(id), state)
+	return err
+}
+
 //    jobout/3
 //    total 1760
 //    drwxr-xr-x 1 weliu 1049089       0 Dec 13 17:18 angular
@@ -246,4 +261,30 @@ func (crms *Crms) Nodes() ([]KV, error) {
 		return nil, err
 	}
 	return GetResponse{resp}.KeyValues(), nil
+}
+
+func (crms *Crms) GetAssignJobs(server string) ([]string, error) {
+	assignNode := assignServerNode(server) + "/"
+	resp, err := crms.etcd.GetWithPrefix(assignNode)
+	if err != nil {
+		return nil, err
+	}
+	kvs := GetResponse{resp}.KeyValues()
+	jobIds := make([]string, len(kvs))
+	for i, kv := range kvs {
+		jobIds[i] = kv.K[len(assignNode):]
+	}
+	return jobIds, nil
+}
+
+func (crms *Crms) WatchAssignJobs(server string, handler AssignWatchHandler) *OnceFunc {
+	assignNode := assignServerNode(server) + "/"
+	rch, cancel := crms.etcd.WatchWithPrefix(assignNode)
+	go HandleWatchEvt(rch, AssignHandlerFactory(server, handler))
+	return crms.cancelables.Add(cancel)
+}
+
+func (crms *Crms) DeleteAssignJob(server string, jobID string) error {
+	_, err := crms.etcd.Delete(assignNode(server, jobID))
+	return err
 }

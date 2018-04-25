@@ -250,30 +250,6 @@ func TestEtcd(t *testing.T) {
 		t.Fatal("as not specify prevKV, PrevKvs should nil, but actual:", delResp.PrevKvs)
 	}
 
-	// delete from key and return previous
-	delResp, err = etcd.Delete("test/a/b/11", clientv3.WithPrevKV(), clientv3.WithFromKey())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if delResp.Deleted != 3 {
-		t.Error(delResp.Deleted)
-	}
-	if len(delResp.PrevKvs) != 3 {
-		t.Error(delResp.PrevKvs)
-	}
-	kv = delResp.PrevKvs[0]
-	if string(kv.Key) != "test/a/b/11" || string(kv.Value) != "1111" {
-		t.Fatal(kv)
-	}
-	kv = delResp.PrevKvs[1]
-	if string(kv.Key) != "test/a/b/2" || string(kv.Value) != "22" {
-		t.Fatal(kv)
-	}
-	kv = delResp.PrevKvs[2]
-	if string(kv.Key) != "test/a/b/21" || string(kv.Value) != "2121" {
-		t.Fatal(kv)
-	}
-
 	// check watch A's result, call cancelA to stop watch so that result will be return from channel
 	cancelA()
 	resA, ok := <-resultA
@@ -316,7 +292,7 @@ func TestEtcd(t *testing.T) {
 	if !ok {
 		t.Fatal(ok)
 	}
-	const lenAB = 7
+	const lenAB = 4
 	if len(resAB) != lenAB {
 		t.Fatalf("len is not as expected, actual len: %d\nActual: %v", len(resAB), resAB)
 	}
@@ -347,27 +323,33 @@ func TestEtcd(t *testing.T) {
 				K: "test/a/b/10",
 				V: "",
 			},
-		}, {
-			Type: WatchEvtDelete,
-			KV: KV{
-				K: "test/a/b/11",
-				V: "",
-			},
-		}, {
-			Type: WatchEvtDelete,
-			KV: KV{
-				K: "test/a/b/2",
-				V: "",
-			},
-		}, {
-			Type: WatchEvtDelete,
-			KV: KV{
-				K: "test/a/b/21",
-				V: "",
-			},
 		},
 	} {
 		t.Fatal(resAB)
+	}
+
+	// delete from key and return previous
+	delResp, err = etcd.Delete("test/a/b/11", clientv3.WithPrevKV(), clientv3.WithFromKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if delResp.Deleted != 3 {
+		t.Error(delResp.Deleted)
+	}
+	if len(delResp.PrevKvs) != 3 {
+		t.Error(delResp.PrevKvs)
+	}
+	kv = delResp.PrevKvs[0]
+	if string(kv.Key) != "test/a/b/11" || string(kv.Value) != "1111" {
+		t.Fatal(kv)
+	}
+	kv = delResp.PrevKvs[1]
+	if string(kv.Key) != "test/a/b/2" || string(kv.Value) != "22" {
+		t.Fatal(kv)
+	}
+	kv = delResp.PrevKvs[2]
+	if string(kv.Key) != "test/a/b/21" || string(kv.Value) != "2121" {
+		t.Fatal(kv)
 	}
 
 	// verify temp node life

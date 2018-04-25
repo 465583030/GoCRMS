@@ -26,6 +26,7 @@ func TestComposableError(t *testing.T) {
 	err = ComposeErrors([]error{
 		errors.New("not wenzhe's error"),
 		errors.New("should be your error"),
+		nil, // nil can be removed
 		errors.New("never my error"),
 	})
 	if err.Error() != `Error 1: not wenzhe's error

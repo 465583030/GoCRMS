@@ -86,9 +86,12 @@ func TestCrms(t *testing.T) {
 	}
 
 	// test get one server
-	if sv1, err := crms.GetServer("sv1"); err != nil {
+	if sv1, exist, err := crms.GetServer("sv1"); err != nil {
 		t.Fatal(err)
 	} else {
+		if !exist {
+			t.Error(exist)
+		}
 		if *sv1 != (Server{
 			Name: "sv1",
 			Closed: true,
