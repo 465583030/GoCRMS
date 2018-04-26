@@ -1,4 +1,4 @@
-package gocrms
+package common
 
 import (
 	"testing"
@@ -22,7 +22,7 @@ func TestEqWithDefaultGolden(t *testing.T) {
 		t.Fatal(ok)
 	}
 	dir := path.Dir(file)
-	if gf != path.Join(dir, "golden", "golden_test", "gocrms.TestEqWithDefaultGolden") {
+	if gf != path.Join(dir, "golden", "golden_test", "common.TestEqWithDefaultGolden") {
 		t.Error(gf)
 	}
 

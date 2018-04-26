@@ -1,4 +1,4 @@
-package gocrms
+package common
 
 import (
 	"io/ioutil"
@@ -73,20 +73,20 @@ func EqByFuncWithGolden(goldenFile, actual string, isEqual func(actual, expected
 	switch force {
 	case "force":
 		if err = ioutil.WriteFile(goldenFile, []byte(actual), 0666); err != nil {
-			return ComposeErrors([]error{eqErr, err})
+			return ComposeErrors(eqErr, err)
 		} else {
-			return ComposeErrors([]error{eqErr, errors.New(fmt.Sprintf(
+			return ComposeErrors(eqErr, errors.New(fmt.Sprintf(
 				`Diff:
 %s
 --------------------------
 NOT ERROR: update golden file %s with content:
-%s`, dif, goldenFile, actual))})
+%s`, dif, goldenFile, actual)))
 		}
 	default:
-		return ComposeErrors([]error{eqErr, errors.New(fmt.Sprintf(
+		return ComposeErrors(eqErr, errors.New(fmt.Sprintf(
 			`Diff with golden file %s
 %s
 ---------- Actual: ---------
-%s`, goldenFile, dif, actual))})
+%s`, goldenFile, dif, actual)))
 	}
 }

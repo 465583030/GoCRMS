@@ -10,6 +10,7 @@ import (
 	"path"
 	"io/ioutil"
 	"log"
+	"github.com/WenzheLiu/GoCRMS/ut"
 )
 
 func TestCrmsd(t *testing.T) {
@@ -70,22 +71,15 @@ func TestCrmsd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//etcdEvtLogFile, err := os.Create(path.Join(logDir(), "etcdevt.log"))
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//defer etcdEvtLogFile.Close()
-	//etcdEvtLog := log.New(etcdEvtLogFile, "", log.Ldate | log.Lmicroseconds)
-
 	// watch crms/ evt
 	wch, cancel := crmsd.crms.etcd.WatchWithPrefix("crms/")
 	defer cancel()
 	go HandleWatchEvt(wch, KVHandlerFactory(WatchFunc{
 		HandlePut: func(k, v string) {
-			log.Printf("etcd put (%s, %s)\n", k, v)
+			log.Printf("etcd on put: (%s, %s)\n", k, v)
 		},
-		HandleDelete: func(k, v string) {
-			log.Printf("etcd del (%s, %s)\n", k, v)
+		HandleDelete: func(k string) {
+			log.Printf("etcd on del: %s\n", k)
 		},
 	}))
 
@@ -129,66 +123,9 @@ func TestCrmsd(t *testing.T) {
 	if content, err := ioutil.ReadFile(path.Join(logDir(), "s1.log")); err != nil {
 		t.Error(err)
 	} else {
-		err := EqLog(string(content), `
-2018/04/24 16:24:00.601202 Slot 0 is assigned to Job pre
-2018/04/24 16:24:00.602202 etcd put (crms/jobstate/pre, running)
-2018/04/24 16:24:00.609202 Run Job pre with command [python -c import sys,time; print 'pre'; time.sleep(2); print 'after'; sys.exit(0)]
-2018/04/24 16:24:01.602202 etcd put (crms/job/0, ["python","-c","import sys,time; print 0; time.sleep(3); print 0; sys.exit(0)"])
-2018/04/24 16:24:01.610202 etcd put (crms/assign/s1/0, )
-2018/04/24 16:24:01.610202 Slot 1 is assigned to Job 0
-2018/04/24 16:24:01.614202 etcd put (crms/job/1, ["python","-c","import sys,time; print 1; time.sleep(0); print -1; sys.exit(1)"])
-2018/04/24 16:24:01.617202 etcd put (crms/assign/s1/1, )
-2018/04/24 16:24:01.620202 etcd put (crms/jobstate/0, running)
-2018/04/24 16:24:01.620202 etcd put (crms/job/2, ["python","-c","import sys,time; print 2; time.sleep(1); print -2; sys.exit(0)"])
-2018/04/24 16:24:01.624202 etcd put (crms/assign/s1/2, )
-2018/04/24 16:24:01.629202 Run Job 0 with command [python -c import sys,time; print 0; time.sleep(3); print 0; sys.exit(0)]
-2018/04/24 16:24:01.637202 etcd put (crms/job/3, ["python","-c","import sys,time; print 3; time.sleep(1); print -3; sys.exit(1)"])
-2018/04/24 16:24:01.638202 etcd put (crms/assign/s1/3, )
-2018/04/24 16:24:01.640202 etcd put (crms/job/4, ["python","-c","import sys,time; print 4; time.sleep(2); print -4; sys.exit(0)"])
-2018/04/24 16:24:01.643202 etcd put (crms/assign/s1/4, )
-2018/04/24 16:24:01.646202 etcd put (crms/job/5, ["python","-c","import sys,time; print 5; time.sleep(0); print -5; sys.exit(1)"])
-2018/04/24 16:24:01.649202 etcd put (crms/assign/s1/5, )
-2018/04/24 16:24:02.858202 Success to run job pre
-2018/04/24 16:24:02.861202 etcd put (crms/jobstate/pre, done)
-2018/04/24 16:24:02.875202 Slot 0 is assigned to Job 1
-2018/04/24 16:24:02.876202 etcd del (crms/assign/s1/pre, )
-2018/04/24 16:24:02.879202 etcd put (crms/jobstate/1, running)
-2018/04/24 16:24:02.886202 Run Job 1 with command [python -c import sys,time; print 1; time.sleep(0); print -1; sys.exit(1)]
-2018/04/24 16:24:03.117202 Fail to run job 1, reason: exit status 1
-2018/04/24 16:24:03.118202 etcd put (crms/jobstate/1, fail)
-2018/04/24 16:24:03.124202 Slot 0 is assigned to Job 2
-2018/04/24 16:24:03.124202 etcd del (crms/assign/s1/1, )
-2018/04/24 16:24:03.128202 etcd put (crms/jobstate/2, running)
-2018/04/24 16:24:03.135202 Run Job 2 with command [python -c import sys,time; print 2; time.sleep(1); print -2; sys.exit(0)]
-2018/04/24 16:24:04.336202 Success to run job 2
-2018/04/24 16:24:04.339202 etcd put (crms/jobstate/2, done)
-2018/04/24 16:24:04.343202 Slot 0 is assigned to Job 3
-2018/04/24 16:24:04.343202 etcd del (crms/assign/s1/2, )
-2018/04/24 16:24:04.347202 etcd put (crms/jobstate/3, running)
-2018/04/24 16:24:04.359202 Run Job 3 with command [python -c import sys,time; print 3; time.sleep(1); print -3; sys.exit(1)]
-2018/04/24 16:24:04.861202 Success to run job 0
-2018/04/24 16:24:04.862202 etcd put (crms/jobstate/0, done)
-2018/04/24 16:24:04.867202 Slot 1 is assigned to Job 4
-2018/04/24 16:24:04.867202 etcd del (crms/assign/s1/0, )
-2018/04/24 16:24:04.872202 etcd put (crms/jobstate/4, running)
-2018/04/24 16:24:04.886202 Run Job 4 with command [python -c import sys,time; print 4; time.sleep(2); print -4; sys.exit(0)]
-2018/04/24 16:24:05.576202 Fail to run job 3, reason: exit status 1
-2018/04/24 16:24:05.578202 etcd put (crms/jobstate/3, fail)
-2018/04/24 16:24:05.581202 Slot 0 is assigned to Job 5
-2018/04/24 16:24:05.582202 etcd del (crms/assign/s1/3, )
-2018/04/24 16:24:05.587202 etcd put (crms/jobstate/5, running)
-2018/04/24 16:24:05.601202 Run Job 5 with command [python -c import sys,time; print 5; time.sleep(0); print -5; sys.exit(1)]
-2018/04/24 16:24:05.825202 Fail to run job 5, reason: exit status 1
-2018/04/24 16:24:05.829202 etcd put (crms/jobstate/5, fail)
-2018/04/24 16:24:05.838202 etcd del (crms/assign/s1/5, )
-2018/04/24 16:24:07.117202 Success to run job 4
-2018/04/24 16:24:07.118202 etcd put (crms/jobstate/4, done)
-2018/04/24 16:24:07.131202 etcd del (crms/assign/s1/4, )
-2018/04/24 16:24:08.652202 etcd put (crms/server/s1, close)
-
-`, 200 * time.Millisecond)
+		err := ut.EqLogWithGolden(ut.DefaultGoldenFile(), string(content), 300 * time.Millisecond)
 		if err != nil {
-			t.Error(err, string(content))
+			t.Error(err)
 		}
 	}
 }

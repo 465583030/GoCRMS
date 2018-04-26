@@ -1,5 +1,7 @@
 package gocrms
 
+import "encoding/json"
+
 const (
 	StatusNew     = "new"
 	StatusRunning = "running"
@@ -8,15 +10,24 @@ const (
 )
 
 type JobState struct {
-	ID      string
-	State	string
+	ID    string // job ID
+	State State  // job State
 }
 
-func NewJobState(id, state string) (*JobState, error) {
-	return &JobState{
-		ID: id,
-		State: state,
-	}, nil
+type State struct {
+	Status  string // job status, value is StatusXXX
+	Host    string // machine host to run the job
+	PID     int    // process ID that run the job
+	OutFile string // redirect stdout/stderr to the file
+	Error   string // if fail, record the error
+}
+
+func NewJobState(id, jsonState string) (*JobState, error) {
+	js := &JobState{
+		ID:    id,
+	}
+	err := json.Unmarshal([]byte(jsonState), &js.State)
+	return js, err
 }
 
 type JobStateWatchHandler interface {
@@ -25,7 +36,7 @@ type JobStateWatchHandler interface {
 }
 
 type JobStateWatchFunc struct {
-	HandlePut func(jobState *JobState)
+	HandlePut    func(jobState *JobState)
 	HandleDelete func(jobState *JobState)
 }
 
@@ -43,7 +54,7 @@ func (w JobStateWatchFunc) OnDelete(jobState *JobState) {
 
 type jobStateWatchHandlerAdapter struct {
 	jobState *JobState
-	handler JobStateWatchHandler
+	handler  JobStateWatchHandler
 }
 
 func (h *jobStateWatchHandlerAdapter) OnPut() {
@@ -56,10 +67,16 @@ func (h *jobStateWatchHandlerAdapter) OnDelete() {
 
 func JobStateHandlerFactory(handler JobStateWatchHandler) WatchHandlerFactory {
 	return func(k, v string) (WatchHandler, error) {
-		jobState, err := NewJobState(k, v)
+		var jobID string
+		if n := len(JobStateNodePrefix); k[:n] == JobStateNodePrefix {
+			jobID = k[n:]
+		} else {
+			jobID = k
+		}
+		jobState, err := NewJobState(jobID, v)
 		return &jobStateWatchHandlerAdapter{
 			jobState: jobState,
-			handler: handler,
+			handler:  handler,
 		}, err
 	}
 }

@@ -44,12 +44,12 @@ func HandleWatchEvt(rch clientv3.WatchChan, createHandler WatchHandlerFactory) {
 
 type KVWatchHandler interface {
 	OnPut(k, v string)
-	OnDelete(k, v string)
+	OnDelete(k string)
 }
 
 type WatchFunc struct {
 	HandlePut func(k, v string)
-	HandleDelete func(k, v string)
+	HandleDelete func(k string)
 }
 
 func (w WatchFunc) OnPut(k, v string) {
@@ -58,9 +58,9 @@ func (w WatchFunc) OnPut(k, v string) {
 	}
 }
 
-func (w WatchFunc) OnDelete(k, v string) {
+func (w WatchFunc) OnDelete(k string) {
 	if w.HandleDelete != nil {
-		w.HandleDelete(k, v)
+		w.HandleDelete(k)
 	}
 }
 
@@ -74,7 +74,7 @@ func (h *kvWatchHandlerAdapter) OnPut() {
 }
 
 func (h *kvWatchHandlerAdapter) OnDelete() {
-	h.handler.OnDelete(h.k, h.v)
+	h.handler.OnDelete(h.k)
 }
 
 func KVHandlerFactory(handler KVWatchHandler) WatchHandlerFactory {

@@ -1,0 +1,55 @@
+2018/04/26 15:38:42.012624 Slot 0 is assigned to Job pre
+2018/04/26 15:38:42.015624 etcd on put: (crms/jobstate/pre, running)
+2018/04/26 15:38:42.036624 Run Job pre with command [python -c import sys,time; print 'pre'; time.sleep(2); print 'after'; sys.exit(0)]
+2018/04/26 15:38:43.015624 etcd on put: (crms/job/0, ["python","-c","import sys,time; print 0; time.sleep(3); print 0; sys.exit(0)"])
+2018/04/26 15:38:43.027624 Slot 1 is assigned to Job 0
+2018/04/26 15:38:43.027624 etcd on put: (crms/assign/s1/0, )
+2018/04/26 15:38:43.030624 etcd on put: (crms/job/1, ["python","-c","import sys,time; print 1; time.sleep(0); print -1; sys.exit(1)"])
+2018/04/26 15:38:43.034624 etcd on put: (crms/assign/s1/1, )
+2018/04/26 15:38:43.039624 etcd on put: (crms/jobstate/0, running)
+2018/04/26 15:38:43.039624 etcd on put: (crms/job/2, ["python","-c","import sys,time; print 2; time.sleep(1); print -2; sys.exit(0)"])
+2018/04/26 15:38:43.044624 etcd on put: (crms/assign/s1/2, )
+2018/04/26 15:38:43.050624 etcd on put: (crms/job/3, ["python","-c","import sys,time; print 3; time.sleep(1); print -3; sys.exit(1)"])
+2018/04/26 15:38:43.052624 etcd on put: (crms/assign/s1/3, )
+2018/04/26 15:38:43.056624 etcd on put: (crms/job/4, ["python","-c","import sys,time; print 4; time.sleep(2); print -4; sys.exit(0)"])
+2018/04/26 15:38:43.059624 Run Job 0 with command [python -c import sys,time; print 0; time.sleep(3); print 0; sys.exit(0)]
+2018/04/26 15:38:43.060624 etcd on put: (crms/assign/s1/4, )
+2018/04/26 15:38:43.063624 etcd on put: (crms/job/5, ["python","-c","import sys,time; print 5; time.sleep(0); print -5; sys.exit(1)"])
+2018/04/26 15:38:43.067624 etcd on put: (crms/assign/s1/5, )
+2018/04/26 15:38:44.284645 Success to run job pre
+2018/04/26 15:38:44.286648 etcd on put: (crms/jobstate/pre, done)
+2018/04/26 15:38:44.294664 Slot 0 is assigned to Job 1
+2018/04/26 15:38:44.294664 etcd on del: crms/assign/s1/pre
+2018/04/26 15:38:44.299673 etcd on put: (crms/jobstate/1, running)
+2018/04/26 15:38:44.313700 Run Job 1 with command [python -c import sys,time; print 1; time.sleep(0); print -1; sys.exit(1)]
+2018/04/26 15:38:44.504061 Fail to run job 1, reason: exit status 1
+2018/04/26 15:38:44.505063 etcd on put: (crms/jobstate/1, fail)
+2018/04/26 15:38:44.523097 Slot 0 is assigned to Job 2
+2018/04/26 15:38:44.523097 etcd on del: crms/assign/s1/1
+2018/04/26 15:38:44.541131 etcd on put: (crms/jobstate/2, running)
+2018/04/26 15:38:44.549146 Run Job 2 with command [python -c import sys,time; print 2; time.sleep(1); print -2; sys.exit(0)]
+2018/04/26 15:38:45.737216 Success to run job 2
+2018/04/26 15:38:45.739217 etcd on put: (crms/jobstate/2, done)
+2018/04/26 15:38:45.742219 etcd on del: crms/assign/s1/2
+2018/04/26 15:38:45.743220 Slot 0 is assigned to Job 3
+2018/04/26 15:38:45.747223 etcd on put: (crms/jobstate/3, running)
+2018/04/26 15:38:45.759226 Run Job 3 with command [python -c import sys,time; print 3; time.sleep(1); print -3; sys.exit(1)]
+2018/04/26 15:38:46.296334 Success to run job 0
+2018/04/26 15:38:46.297334 etcd on put: (crms/jobstate/0, done)
+2018/04/26 15:38:46.306336 Slot 1 is assigned to Job 4
+2018/04/26 15:38:46.306336 etcd on del: crms/assign/s1/0
+2018/04/26 15:38:46.311337 etcd on put: (crms/jobstate/4, running)
+2018/04/26 15:38:46.325339 Run Job 4 with command [python -c import sys,time; print 4; time.sleep(2); print -4; sys.exit(0)]
+2018/04/26 15:38:46.961445 Fail to run job 3, reason: exit status 1
+2018/04/26 15:38:46.962446 etcd on put: (crms/jobstate/3, fail)
+2018/04/26 15:38:46.986448 Slot 0 is assigned to Job 5
+2018/04/26 15:38:46.986448 etcd on del: crms/assign/s1/3
+2018/04/26 15:38:47.058455 etcd on put: (crms/jobstate/5, running)
+2018/04/26 15:38:47.068456 Run Job 5 with command [python -c import sys,time; print 5; time.sleep(0); print -5; sys.exit(1)]
+2018/04/26 15:38:47.264476 Fail to run job 5, reason: exit status 1
+2018/04/26 15:38:47.272477 etcd on put: (crms/jobstate/5, fail)
+2018/04/26 15:38:47.273477 etcd on del: crms/assign/s1/5
+2018/04/26 15:38:48.541524 Success to run job 4
+2018/04/26 15:38:48.545524 etcd on put: (crms/jobstate/4, done)
+2018/04/26 15:38:48.560524 etcd on del: crms/assign/s1/4
+2018/04/26 15:38:50.083524 etcd on put: (crms/server/s1, close)

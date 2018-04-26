@@ -7,7 +7,7 @@ import (
 
 type ComposableError []error
 
-func ComposeErrors(errors []error) error {
+func ComposeErrors(errors ...error) error {
 	// remove nil from the slice
 	errs := make([]error, 0, len(errors))
 	for _, e := range errors {

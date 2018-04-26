@@ -4,6 +4,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"time"
 	"encoding/json"
+	"github.com/WenzheLiu/GoCRMS/common"
 )
 
 const (
@@ -41,7 +42,7 @@ func jobOutNode(jobId string) string {
 
 type Crms struct {
 	etcd               Etcd
-	cancelables        OnceFuncs
+	cancelables        common.OnceFuncs
 }
 
 func NewCrms(cfg clientv3.Config, requestTimeout time.Duration) (*Crms, error) {
@@ -51,7 +52,7 @@ func NewCrms(cfg clientv3.Config, requestTimeout time.Duration) (*Crms, error) {
 	}
 	crms := &Crms{
 		etcd:        Etcd{cli, requestTimeout},
-		cancelables: *NewOnceFuncs(4),
+		cancelables: *common.NewOnceFuncs(4),
 	}
 	return crms, nil
 }
@@ -102,13 +103,13 @@ func (crms *Crms) UpdateServer(server *Server) error {
 	return err
 }
 
-func (crms *Crms) WatchServer(name string, handler ServerWatchHandler) (cancelFunc *OnceFunc) {
+func (crms *Crms) WatchServer(name string, handler ServerWatchHandler) (cancelFunc *common.OnceFunc) {
 	rch, cancel := crms.etcd.Watch(serverNode(name))
 	go HandleWatchEvt(rch, ServerHandlerFactory(handler))
 	return crms.cancelables.Add(cancel)
 }
 
-func (crms *Crms) WatchServers(handler ServerWatchHandler) (cancelFunc *OnceFunc) {
+func (crms *Crms) WatchServers(handler ServerWatchHandler) (cancelFunc *common.OnceFunc) {
 	rch, cancel := crms.etcd.WatchWithPrefix(ServerNodePrefix)
 	go HandleWatchEvt(rch, ServerHandlerFactory(handler))
 	return crms.cancelables.Add(cancel)
@@ -133,7 +134,7 @@ func (crms *Crms) StopAllServers() (count int, err error) {
 			count++
 		}
 	}
-	return count, ComposeErrors(errs)
+	return count, common.ComposeErrors(errs...)
 }
 
 // jobCommand is an array of each part of the command
@@ -183,7 +184,7 @@ func (crms *Crms) GetJob(id string) (*Job, error) {
 	return NewJob(id, v)
 }
 
-func (crms *Crms) WatchJobs(handler JobWatchHandler) *OnceFunc {
+func (crms *Crms) WatchJobs(handler JobWatchHandler) *common.OnceFunc {
 	rch, cancel := crms.etcd.WatchWithPrefix(JobNodePrefix)
 	go HandleWatchEvt(rch, JobHandlerFactory(handler))
 	return crms.cancelables.Add(cancel)
@@ -207,7 +208,7 @@ func (crms *Crms) GetJobState(id string) (*JobState, error) {
 	return NewJobState(id, v)
 }
 
-func (crms *Crms) WatchJobState(id string, handler JobStateWatchHandler) *OnceFunc {
+func (crms *Crms) WatchJobState(id string, handler JobStateWatchHandler) *common.OnceFunc {
 	rch, cancel := crms.etcd.Watch(jobStateNode(id))
 	go HandleWatchEvt(rch, JobStateHandlerFactory(handler))
 	return crms.cancelables.Add(cancel)
@@ -239,7 +240,7 @@ func (crms *Crms) GetJobOut(id string) (*JobOut, error) {
 	return NewJobOut(id, v)
 }
 
-func (crms *Crms) WatchJobOut(id string, handler JobOutWatchHandler) *OnceFunc {
+func (crms *Crms) WatchJobOut(id string, handler JobOutWatchHandler) *common.OnceFunc {
 	rch, cancel := crms.etcd.Watch(jobOutNode(id))
 	go HandleWatchEvt(rch, JobOutHandlerFactory(handler))
 	return crms.cancelables.Add(cancel)
@@ -277,7 +278,7 @@ func (crms *Crms) GetAssignJobs(server string) ([]string, error) {
 	return jobIds, nil
 }
 
-func (crms *Crms) WatchAssignJobs(server string, handler AssignWatchHandler) *OnceFunc {
+func (crms *Crms) WatchAssignJobs(server string, handler AssignWatchHandler) *common.OnceFunc {
 	assignNode := assignServerNode(server) + "/"
 	rch, cancel := crms.etcd.WatchWithPrefix(assignNode)
 	go HandleWatchEvt(rch, AssignHandlerFactory(server, handler))
