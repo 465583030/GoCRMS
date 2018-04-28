@@ -97,7 +97,7 @@ func TestCrmsd(t *testing.T) {
 					"import sys,time; print %d; time.sleep(%d); print %d; sys.exit(%d)",
 					i, sleepSeconds[i], -i, exitValue)},
 			})
-			crms.RunJob(id, server)
+			crms.AssignJob(id, server)
 		}
 		time.Sleep(7 * time.Second)
 		crms.StopServer(server)

@@ -1,4 +1,4 @@
-package gocrms
+package common
 
 import (
 	"strings"

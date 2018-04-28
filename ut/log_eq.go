@@ -1,4 +1,4 @@
-package common
+package ut
 
 import (
 	"time"
@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"errors"
 	"strings"
+	"github.com/WenzheLiu/GoCRMS/common"
 )
 
 type LogItem struct {
@@ -19,7 +20,7 @@ func (this *LogItem) eq(that *LogItem, threshold time.Duration) error {
 		return nil
 	}
 	if this.Msg != that.Msg {
-		return errors.New(fmt.Sprintf("msg not eq: %s != %s", this.Msg, that.Msg))
+		return errors.New(fmt.Sprintf("msg not eq: %s", Diff(that.Msg, this.Msg)))
 	}
 	diff := this.relative - that.relative
 	if diff < 0 {
@@ -27,10 +28,11 @@ func (this *LogItem) eq(that *LogItem, threshold time.Duration) error {
 	}
 	if diff > threshold {
 		return errors.New(fmt.Sprintf(
-			"relative diff > threshold: |%v - %v| > %v", this.relative, that.relative, threshold))
+			"relative Diff > threshold: |%v - %v| > %v", this.relative, that.relative, threshold))
 	}
 	return nil
 }
+
 func (this *LogItem) swapMsg(that *LogItem) {
 	this.Msg, that.Msg = that.Msg, this.Msg
 }
@@ -55,29 +57,39 @@ func parseLogItem(line string) (*LogItem, error) {
 	}, nil
 }
 
-type Log []*LogItem
+type Log struct {
+	items []*LogItem
+	content string
+}
 
 func (this Log) Eq(that Log, threshold time.Duration) error {
-	n := len(this)
-	if n != len(that) {
-		return errors.New(fmt.Sprintf("len not eq, %d != %d", n, len(that)))
+	n := len(this.items)
+	if n != len(that.items) {
+		return errors.New(fmt.Sprintf("len not eq, %d != %d, diff:\n%v", n, len(that.items),
+			Diff(that.content, this.content)))
 	}
+	errs := make([]error, 0, 16)
 L:	for i := 0; i < n; i++ {
-		if err := this[i].eq(that[i], threshold); err != nil {
+		if err := this.items[i].eq(that.items[i], threshold); err != nil {
 			// when msg not eq, maybe the order is different
-			if this[i].Msg != that[i].Msg {
+			if this.items[i].Msg != that.items[i].Msg {
 				// compare with next if near
-				for j := i + 1; j < n && that[j].Time.Sub(that[i].Time) < threshold; j++ {
-					if this[i].eq(that[j], threshold) == nil {
-						that[i].swapMsg(that[j])
+				for j := i + 1; j < n && that.items[j].Time.Sub(that.items[i].Time) < threshold; j++ {
+					if this.items[i].eq(that.items[j], threshold) == nil {
+						that.items[i].swapMsg(that.items[j])
 						continue L
 					}
 				}
 			}
-			return errors.New(fmt.Sprintf("Log item %d, reason: %v", i + 1, err.Error()))
+			errs = append(errs, errors.New(fmt.Sprintf(
+				"Log item %d, reason: %v", i + 1, err.Error())))
 		}
 	}
-	return nil
+	if len(errs) > 0 {
+		errs = append(errs, errors.New(fmt.Sprintf(
+			"Diff:\n%v", Diff(that.content, this.content))))
+	}
+	return common.ComposeErrors(errs...)
 }
 
 func ParseLog(log string) Log {
@@ -101,7 +113,7 @@ func ParseLog(log string) Log {
 			items[i].relative = items[i].Time.Sub(items[i-1].Time)
 		}
 	}
-	return items
+	return Log{items, log}
 }
 
 func EqLog(actual string, expected string, threshold time.Duration) error {

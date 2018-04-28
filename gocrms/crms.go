@@ -5,39 +5,37 @@ import (
 	"time"
 	"encoding/json"
 	"github.com/WenzheLiu/GoCRMS/common"
+	"fmt"
+	"path"
+	"os"
+	"errors"
+	"os/exec"
+	"log"
+	"strconv"
 )
 
 const (
 	CrmsNodePrefix   = "crms/"
 	ServerNodePrefix = CrmsNodePrefix + "server/"
-	JobNodePrefix    = CrmsNodePrefix + "job/"
+	JobNode = CrmsNodePrefix + "job"
+	JobNodePrefix    = JobNode + "/"
 	AssignNodePrefix = CrmsNodePrefix + "assign/"
-	JobStateNodePrefix    = CrmsNodePrefix + "jobstate/"
-	JobOutNodePrefix    = CrmsNodePrefix + "jobout/"
 )
 
 func serverNode(serverName string) string {
 	return ServerNodePrefix + serverName
 }
 
-func jobNode(jobId string) string {
-	return JobNodePrefix + jobId
+func jobNode(jobId int) string {
+	return JobNodePrefix + strconv.Itoa(jobId)
 }
 
 func assignServerNode(server string) string {
 	return AssignNodePrefix + server
 }
 
-func assignNode(server, jobId string) string {
-	return assignServerNode(server) + "/" + jobId
-}
-
-func jobStateNode(jobId string) string {
-	return JobStateNodePrefix + jobId
-}
-
-func jobOutNode(jobId string) string {
-	return JobOutNodePrefix + jobId
+func assignNode(server string, jobId int) string {
+	return assignServerNode(server) + "/" + strconv.Itoa(jobId)
 }
 
 type Crms struct {
@@ -61,6 +59,8 @@ func (crms *Crms) Close() {
 	crms.cancelables.CallAll()
 	crms.etcd.Close()
 }
+
+///// server related methods, implement ServerOp interface
 
 func (crms *Crms) GetServer(name string) (server *Server, exist bool, err error) {
 	resp, err := crms.etcd.Get(serverNode(name))
@@ -137,18 +137,67 @@ func (crms *Crms) StopAllServers() (count int, err error) {
 	return count, common.ComposeErrors(errs...)
 }
 
+///// job related methods, implement ServerOp interface
+
 // jobCommand is an array of each part of the command
-func (crms *Crms) CreateJob(job *Job) error {
-	cmd, err := json.Marshal(job.Command)
+func (crms *Crms) SubmitJob(cmd []string, jobName, server string, onHold bool) (jobID int, err error) {
+	resp, err := crms.etcd.Get(JobNode)
+	if err != nil {  // TODO: test the err is the return value or the local
+		return
+	}
+	v, err := GetResponse{resp}.Value()
+	if err != nil {
+		return
+	}
+	lastJobId, err := strconv.Atoi(v)
+	if err != nil {
+		return
+	}
+	jobID = lastJobId + 1
+	var status int
+	if onHold {
+		status = StatusOnHold
+	} else {
+		status = StatusPending
+	}
+	jobState := JobState{
+		Command:cmd,
+		Status:status,
+		SubmitTime:time.Now(),
+		Server:server,
+	}
+
+	state, err := json.Marshal(jobState)
+	if err != nil {
+		return
+	}
+	// TODO: can we call only one etcd req instead of 2 atomic
+	// create job
+	_, err = crms.etcd.Put(jobNode(jobID), string(state)) // TODO: can etcd check job non-exist
+	if err != nil {
+		return
+	}
+	// update last job ID
+	// TODO: this op may be conflict with other, can etcd support CAS op
+	_, err = crms.etcd.Put(JobNode, strconv.Itoa(jobID))
+
+	// if not on hold, assign to server to run
+	if !onHold {
+		assignNode(server, jobID)
+		_, err = crms.etcd.Put(assignNode(server, jobID), "")
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (crms *Crms) updateJob(job *Job) error {
+	state, err := json.Marshal(job.State)
 	if err != nil {
 		return err
 	}
-	_, err = crms.etcd.Put(jobNode(job.ID), string(cmd))
-	return err
-}
-
-func (crms *Crms) RunJob(jobId string, server string) error {
-	_, err := crms.etcd.Put(assignNode(server, jobId), "")
+	_, err = crms.etcd.Put(jobNode(job.ID), string(state))
 	return err
 }
 
@@ -163,7 +212,7 @@ func (crms *Crms) GetJobs() ([]*Job, error) {
 	kvs := GetResponse{resp}.KeyValues()
 	jobs := make([]*Job, len(kvs))
 	for i, kv := range kvs {
-		job, err := NewJob(kv.K, kv.V)
+		job, err := ParseJobFromJson(kv.K, kv.V)
 		if err != nil {
 			return jobs, err
 		}
@@ -181,7 +230,7 @@ func (crms *Crms) GetJob(id string) (*Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewJob(id, v)
+	return ParseJobFromJson(id, v)
 }
 
 func (crms *Crms) WatchJobs(handler JobWatchHandler) *common.OnceFunc {
@@ -190,60 +239,79 @@ func (crms *Crms) WatchJobs(handler JobWatchHandler) *common.OnceFunc {
 	return crms.cancelables.Add(cancel)
 }
 
-//    jobstate/3
-//    done
-func (crms *Crms) GetJobState(id string) (*JobState, error) {
-	resp, err := crms.etcd.Get(jobStateNode(id))
+func (crms *Crms) FailJob(id string, jobErr error) error {
+	job, err := crms.GetJob(id)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	res := GetResponse{resp}
-	if res.Len() == 0 {
-		return NewJobState(id, StatusNew)
-	}
-	v, err := res.Value()
-	if err != nil {
-		return nil, err
-	}
-	return NewJobState(id, v)
+	job.State.Status = StatusFail
+	job.State.Error = jobErr.Error()
+	return crms.updateJob(job)
 }
 
-func (crms *Crms) WatchJobState(id string, handler JobStateWatchHandler) *common.OnceFunc {
-	rch, cancel := crms.etcd.Watch(jobStateNode(id))
-	go HandleWatchEvt(rch, JobStateHandlerFactory(handler))
-	return crms.cancelables.Add(cancel)
+func (crms *Crms) DoneJob(id string) error {
+	job, err := crms.GetJob(id)
+	if err != nil {
+		return err
+	}
+	job.State.Status = StatusDone
+	return crms.updateJob(job)
 }
 
-func (crms *Crms) UpdateJobState(id string, state string) error {
-	_, err := crms.etcd.Put(jobStateNode(id), state)
+func (crms *Crms) RunJob(id) {
+
+}
+
+func (cs *CrmsServer) runJob(jobID string) error {
+	job, err := cs.crms.GetJob(jobID)
+	if err != nil {
+		return err
+	}
+	if job.State.Status == StatusRunning {
+		return errors.New(fmt.Sprintf("Job %s is already running", jobID))
+	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+	job.State.Host = hostname
+
+	err = execCmd(job)
+	job.State.EndTime = time.Now()
+	if err != nil {
+		job.State.Error = err.Error()
+	} else {
+		job.State.Error = ""
+	}
 	return err
 }
 
-//    jobout/3
-//    total 1760
-//    drwxr-xr-x 1 weliu 1049089       0 Dec 13 17:18 angular
-//    drwxr-xr-x 1 weliu 1049089       0 Jan 17 16:53 bctools
-//    drwxr-xr-x 1 weliu 1049089       0 Jan  2 09:47 cluster
-func (crms *Crms) GetJobOut(id string) (*JobOut, error) {
-	resp, err := crms.etcd.Get(jobOutNode(id))
+func execCmd(job *Job) error {
+	command := job.State.Command
+	if len(command) == 0 {
+		return errors.New(fmt.Sprint("No command to the job", job.ID))
+	}
+	cmd := exec.Command(command[0], command[1:]...)
+	outPath := path.Join(joboutDir(), job.ID)
+	outFile, err := os.Create(outPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	res := GetResponse{resp}
-	if res.Len() == 0 {
-		return NewJobOut(id, "")
-	}
-	v, err := res.Value()
-	if err != nil {
-		return nil, err
-	}
-	return NewJobOut(id, v)
-}
+	defer outFile.Close()
 
-func (crms *Crms) WatchJobOut(id string, handler JobOutWatchHandler) *common.OnceFunc {
-	rch, cancel := crms.etcd.Watch(jobOutNode(id))
-	go HandleWatchEvt(rch, JobOutHandlerFactory(handler))
-	return crms.cancelables.Add(cancel)
+	cmd.Stdout = outFile
+	cmd.Stderr = outFile
+	log.Println("Run Job", job.ID, "with command", command)
+	if err = cmd.Start(); err != nil {
+		return err
+	}
+
+	job.State.Status = StatusRunning
+	job.State.OutFile = outPath
+	job.State.PID = cmd.Process.Pid
+	job.State.StartTime = time.Now()
+
+	return cmd.Wait()
 }
 
 func (crms *Crms) Reset() error {
@@ -262,6 +330,11 @@ func (crms *Crms) Nodes() ([]KV, error) {
 		return nil, err
 	}
 	return GetResponse{resp}.KeyValues(), nil
+}
+
+func (crms *Crms) AssignJob(jobId string, server string) error {
+	_, err := crms.etcd.Put(assignNode(server, jobId), "")
+	return err
 }
 
 func (crms *Crms) GetAssignJobs(server string) ([]string, error) {

@@ -1,4 +1,4 @@
-package common
+package ut
 
 import (
 	"testing"
@@ -75,11 +75,8 @@ func TestParseLogItem(t *testing.T) {
 }
 
 func TestEqLogWithGolden(t *testing.T) {
-	gf, err := DefaultGoldenFile()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if path.Base(gf) != "gocrms.TestEqLogWithGolden" {
+	gf := DefaultGoldenFile()
+	if path.Base(gf) != "ut.TestEqLogWithGolden" {
 		t.Error(gf)
 	}
 	if err := EqLogWithGolden(gf, logA, 100 * time.Millisecond); err != nil {

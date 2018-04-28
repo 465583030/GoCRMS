@@ -151,8 +151,8 @@ func TestCrms(t *testing.T) {
 	}
 
 
-	// test create job
-	//crms.CreateJob()
+	// test submit job
+	//crms.SubmitJob()
 }
 
 func isServersEquals(ss1, ss2 []*Server) bool {

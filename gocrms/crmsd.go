@@ -65,12 +65,12 @@ func (cs *CrmsServer) Start() error {
 				log.Println("Slot", slotID, "is assigned to Job", jobID)
 				if err := cs.runJob(jobID); err != nil {
 					log.Printf("Fail to run job %s, reason: %v", jobID, err)
-					if err := cs.crms.UpdateJobState(jobID, StatusFail); err != nil {
+					if err := cs.crms.FailJob(jobID, err); err != nil {
 						log.Printf("Fail to update job %s state to fail, reason: %v", jobID, err)
 					}
 				} else {
 					log.Println("Success to run job", jobID)
-					if err := cs.crms.UpdateJobState(jobID, StatusDone); err != nil {
+					if err := cs.crms.DoneJob(jobID); err != nil {
 						log.Printf("Fail to update job %s state to done, reason: %v", jobID, err)
 					}
 				}
@@ -105,46 +105,4 @@ func (cs *CrmsServer) WaitUntilClose() {
 func (cs *CrmsServer) Close() {
 	cs.crms.Close()
 	close(cs.slots)
-}
-
-func (cs *CrmsServer) runJob(jobID string) error {
-	jobState, err := cs.crms.GetJobState(jobID)
-	if err != nil {
-		return err
-	}
-	if jobState.State == StatusRunning {
-		log.Println("Job", jobID, "is already running")
-		return nil
-	}
-
-	job, err := cs.crms.GetJob(jobID)
-	if err != nil {
-		return err
-	}
-	if err := cs.crms.UpdateJobState(jobID, StatusRunning); err != nil {
-		return err
-	}
-	return execCmd(job)
-}
-
-func execCmd(job *Job) error {
-	if len(job.Command) == 0 {
-		return errors.New(fmt.Sprint("No command to the job", job.ID))
-	}
-	cmd := exec.Command(job.Command[0], job.Command[1:]...)
-	outPath := path.Join(joboutDir(), job.ID)
-	outFile, err := os.Create(outPath)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	cmd.Stdout = outFile
-	cmd.Stderr = outFile
-	log.Println("Run Job", job.ID, "with command", job.Command)
-	if err = cmd.Start(); err != nil {
-		log.Println(err)
-		return err
-	}
-	return cmd.Wait()
 }

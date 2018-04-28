@@ -15,9 +15,6 @@ import (
 const (
 	defaultDialTimeout      = 2 * time.Second
 	defaultRequestTimeout   = 10 * time.Second
-	defaultCommandTimeOut   = 5 * time.Second
-	defaultKeepAliveTime    = 2 * time.Second
-	defaultKeepAliveTimeOut = 6 * time.Second
 )
 
 var rootCmd = &cobra.Command{
@@ -70,8 +67,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.LogToStdOut, "stdout", false, "log to stdout as well")
 	rootCmd.PersistentFlags().StringVarP(
 		&gocrms.DataDir, "data-dir", "d", path.Join(os.Getenv("HOME"), ".gocrms"), "set the data directory")
-	rootCmd.PersistentFlags().StringVarP(
-		&globalFlags.OutputFormat, "write-out", "w", "simple", "set the output format (simple, json, json_compact)")
 	rootCmd.PersistentFlags().DurationVar(
 		&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
 	rootCmd.PersistentFlags().DurationVar(

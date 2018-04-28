@@ -77,7 +77,7 @@ func (h *serverWatchHandlerAdapter) OnDelete() {
 func ServerHandlerFactory(handler ServerWatchHandler) WatchHandlerFactory {
 	return func(k, v string) (WatchHandler, error) {
 		var name string
-		if n := len(ServerNodePrefix); k[:n] == ServerNodePrefix {
+		if n := len(ServerNodePrefix); len(k) >= n && k[:n] == ServerNodePrefix {
 			name = k[n:]
 		} else {
 			name = k

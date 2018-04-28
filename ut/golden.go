@@ -1,10 +1,9 @@
-package common
+package ut
 
 import (
 	"io/ioutil"
 	"strings"
 	"errors"
-	"github.com/sergi/go-diff/diffmatchpatch"
 	"os"
 	"fmt"
 	"runtime"
@@ -20,10 +19,10 @@ func EqWithGolden(goldenFile, actual string) error {
 }
 
 // default golden file is the <caller's dir>/golden/<caller's file name>/<caller's method name>
-func DefaultGoldenFile() (string, error) {
+func DefaultGoldenFile() string {
 	pc, callerFile, _, ok := runtime.Caller(1)
 	if !ok {
-		return "", errors.New("fail to get caller")
+		panic("fail to get caller")
 	}
 	dir, callerFileName := path.Split(callerFile)
 	var caseName string
@@ -34,17 +33,11 @@ func DefaultGoldenFile() (string, error) {
 	}
 	goldenDir := path.Join(dir, "golden", caseName)
 	if err := os.MkdirAll(goldenDir, 0775); err != nil {
-		return "", err
+		panic(err)
 	}
 	method := runtime.FuncForPC(pc).Name()
 	method = path.Base(method)
-	return path.Join(goldenDir, method), nil
-}
-
-func diff(old string, new string) string {
-	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(old, new, false)
-	return dmp.DiffPrettyText(diffs)
+	return path.Join(goldenDir, method)
 }
 
 func EqByFuncWithGolden(goldenFile, actual string, isEqual func(actual, expected string) (bool, error)) error {
@@ -68,7 +61,7 @@ func EqByFuncWithGolden(goldenFile, actual string, isEqual func(actual, expected
 		return nil
 	}
 
-	dif := diff(expected, actual)
+	dif := Diff(expected, actual)
 	force := os.Getenv("update_golden")
 	switch force {
 	case "force":
